@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="styles/style.css" />
+    <link rel="icon" href="assets/images/movie.png" type="image/png" />
+    <title>Add New Movie</title>
+  </head>
+  <body>
+    <div class="container">
+      <div class="form-container">
+        <h1>Add New Movie</h1>
+
+        <form action="/new" method="POST" class="movie-form">
+          <div class="form-group">
+            <label for="title">Movie Title</label>
+            <input
+              type="text"
+              id="title"
+              name="title"
+              placeholder="Enter movie title"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="description">Description</label>
+            <textarea
+              id="description"
+              name="description"
+              rows="6"
+              placeholder="Write your thoughts about the movie..."
+              required
+            ></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="rating">Rating</label>
+            <input
+              type="number"
+              id="rating"
+              name="rating"
+              min="0"
+              max="10"
+              step="0.1"
+              placeholder="0 - 10"
+              required
+            />
+          </div>
+
+          <div class="button-group">
+            <button type="submit">Add Movie</button>
+            <a href="/" class="cancel-btn">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </body>
+</html>

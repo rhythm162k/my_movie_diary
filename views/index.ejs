@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="styles/style.css" />
+    <link rel="icon" href="assets/images/movie.png" type="image/png" />
+    <title>My Movie Diary</title>
+  </head>
+  <body>
+    <div class="container">
+      <div class="upper-part">
+        <div class="title-add">
+          <h1>My Movie Diary</h1>
+          <h4>Total: <%=total%></h4>
+          <form action="/add" method="get">
+            <button type="submit">Add New</button>
+          </form>
+        </div>
+        <form class="search" action="/search" method="post">
+          <input
+            type="search"
+            id="movie"
+            name="srcfield"
+            placeholder="<%= locals.error ? error :  'Enter movie name'%>"
+            required
+          />
+          <button type="submit">Search</button>
+        </form>
+      </div>
+      <div class="main-body">
+        <% if (locals.movieData.length === 0) { %>
+
+        <p>No Movie Added Yet</p>
+
+        <% } else { movieData.forEach(movie => { %>
+
+        <div class="movie">
+          <div class="movie-poster-description">
+            <div class="movie-img">
+              <img src="<%= movie.imgsrc %>" />
+            </div>
+            <div class="title-rate">
+              <h2><%= movie.title %></h2>
+              <h5>Rating: <%= movie.rating %>/10</h5>
+            </div>
+          </div>
+          <div class="description">
+            <h3>My Description:</h3>
+            <p><%= movie.description %></p>
+          </div>
+        </div>
+
+        <% })} %>
+      </div>
+    </div>
+  </body>
+</html>
