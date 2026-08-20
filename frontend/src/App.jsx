@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
-import HomePage from "./HomePage";
+import { Routes, Route } from "react-router";
+import HomePage from "./Pages/HomePage/HomePage";
+import AddNew from "./Pages/AddNew/AddNew";
 
 function App() {
   const [movies, setMovies] = useState([]);
@@ -14,7 +16,12 @@ function App() {
     fetchMovieData();
   }, []);
 
-  return <HomePage movies={movies} />;
+  return (
+    <Routes>
+      <Route index element={<HomePage movies={movies} />} />
+      <Route path="/add-new" element={<AddNew />} />
+    </Routes>
+  );
 }
 
 export default App;

@@ -1,3 +1,4 @@
+import {Link} from "react-router";
 import "./HomePage.css";
 
 function HomePage({ movies }) {
@@ -9,9 +10,9 @@ function HomePage({ movies }) {
 
           <h4>Total: {movies.length}</h4>
 
-          <form action="/add" method="get">
+          <Link to="/add-new">
             <button type="submit">Add New</button>
-          </form>
+          </Link>
         </div>
 
         <form className="search" action="/search" method="post">
