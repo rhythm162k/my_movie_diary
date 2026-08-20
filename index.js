@@ -29,35 +29,28 @@ async function getData() {
   movieData = result.rows;
 }
 
-app.get("/", async (req, res) => {
-  await getData();
-  res.render("index.ejs", {
-    total: movieData.length,
-    movieData: movieData,
-  });
-});
-
 app.get("/api/movies", async (req, res) => {
   const result = await db.query("SELECT * FROM movies ORDER BY id DESC");
   res.json(result.rows);
 });
 
-app.get("/add", async (req, res) => {
-  res.render("new.ejs");
-});
+app.post("/api/movies", async (req, res) => {
+  const { title, description, rating } = req.body;
 
-app.post("/new", async (req, res) => {
   const response = await fetch(
-    `https://www.omdbapi.com/?apikey=${apiKey}&t=${encodeURIComponent(
-      req.body.title,
-    )}`,
+    `https://www.omdbapi.com/?apikey=${apiKey}&t=${encodeURIComponent(title)}`,
   );
+
   const data = await response.json();
+
   await db.query(
     "INSERT INTO movies (title, rating, description, imgsrc) VALUES ($1, $2, $3, $4)",
-    [req.body.title, req.body.rating, req.body.description, data.Poster],
+    [title, rating, description, data.Poster],
   );
-  res.redirect("/");
+
+  res.json({
+    message: "Movie added successfully",
+  });
 });
 
 app.post("/search", async (req, res) => {
