@@ -1,9 +1,11 @@
 import axios from "axios";
 import React from "react";
+import { useNavigate } from "react-router";
 import { Link } from "react-router";
 import "./AddNew.css";
 
 function AddMovie() {
+  const navigate = useNavigate();
   const [formData, setFormData] = React.useState({
     title: "",
     description: "",
@@ -12,7 +14,6 @@ function AddMovie() {
 
   const handleChange = (event) => {
     const { name, value } = event.target;
-
     setFormData({
       ...formData,
       [name]: value,
@@ -22,6 +23,7 @@ function AddMovie() {
   const handleSubmit = async (event) => {
     event.preventDefault();
     await axios.post("http://localhost:3000/api/movies", formData);
+    navigate("/");
   };
 
   return (

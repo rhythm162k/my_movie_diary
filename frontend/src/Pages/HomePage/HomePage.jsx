@@ -1,7 +1,33 @@
-import {Link} from "react-router";
+import { useEffect, useState } from "react";
+import axios from "axios";
+import { Link } from "react-router";
 import "./HomePage.css";
 
-function HomePage({ movies }) {
+function HomePage() {
+  const [movies, setMovies] = useState([]);
+  const [search, setSearch] = useState("");
+  const [searchResults, setSearchResults] = useState(null);
+
+  useEffect(() => {
+    const fetchMovieData = async () => {
+      const response = await axios.get("http://localhost:3000/api/movies");
+      setMovies(response.data);
+    };
+
+    fetchMovieData();
+  }, []);
+
+  const handleSearch = async (event) => {
+    event.preventDefault();
+
+    const response = await axios.get(
+      `http://localhost:3000/api/movies/search?title=${encodeURIComponent(search)}`,
+    );
+
+    setSearchResults(response.data);
+    console.log(searchResults);
+  };
+
   return (
     <div className="container">
       <div className="upper-part">
@@ -15,12 +41,14 @@ function HomePage({ movies }) {
           </Link>
         </div>
 
-        <form className="search" action="/search" method="post">
+        <form className="search" onSubmit={handleSearch}>
           <input
             type="search"
             id="movie"
             name="srcfield"
             placeholder="Enter movie name"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
             required
           />
 

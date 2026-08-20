@@ -36,18 +36,14 @@ app.get("/api/movies", async (req, res) => {
 
 app.post("/api/movies", async (req, res) => {
   const { title, description, rating } = req.body;
-
   const response = await fetch(
     `https://www.omdbapi.com/?apikey=${apiKey}&t=${encodeURIComponent(title)}`,
   );
-
   const data = await response.json();
-
   await db.query(
     "INSERT INTO movies (title, rating, description, imgsrc) VALUES ($1, $2, $3, $4)",
     [title, rating, description, data.Poster],
   );
-
   res.json({
     message: "Movie added successfully",
   });
