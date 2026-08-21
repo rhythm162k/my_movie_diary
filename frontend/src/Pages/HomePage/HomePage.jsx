@@ -1,40 +1,55 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
+import { useSearchParams } from "react-router";
 import { Link } from "react-router";
+import axios from "axios";
 import "./HomePage.css";
 
 function HomePage() {
   const [movies, setMovies] = useState([]);
-  const [search, setSearch] = useState("");
   const [searchResults, setSearchResults] = useState(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [search, setSearch] = useState(() => searchParams.get("search") || "");
 
   useEffect(() => {
-    const fetchMovieData = async () => {
-      const response = await axios.get("http://localhost:3000/api/movies");
-      setMovies(response.data);
-    };
+    const searchQuery = searchParams.get("search");
 
-    fetchMovieData();
-  }, []);
+    if (searchQuery) {
+      const fetchSearchResults = async () => {
+        const response = await axios.get(
+          `http://localhost:3000/api/movies/search?title=${encodeURIComponent(
+            searchQuery,
+          )}`,
+        );
 
-  const handleSearch = async (event) => {
+        setSearchResults(response.data);
+      };
+
+      fetchSearchResults();
+    } else {
+      const fetchMovieData = async () => {
+        const response = await axios.get("http://localhost:3000/api/movies");
+
+        setMovies(response.data);
+        setSearchResults(null);
+      };
+
+      fetchMovieData();
+    }
+  }, [searchParams]);
+
+  const handleSearch = (event) => {
     event.preventDefault();
-
-    const response = await axios.get(
-      `http://localhost:3000/api/movies/search?title=${encodeURIComponent(search)}`,
-    );
-
-    setSearchResults(response.data);
-    console.log(searchResults);
+    setSearchParams({ search });
   };
+
+  const displayedMovies = searchResults !== null ? searchResults : movies;
 
   return (
     <div className="container">
       <div className="upper-part">
         <div className="title-add">
-          <h1>My Movie Diary</h1>
-
-          <h4>Total: {movies.length}</h4>
+          <h1>Movie Diary</h1>
+          <h4>Total: {displayedMovies.length}</h4>
 
           <Link to="/add-new">
             <button type="submit">Add New</button>
@@ -57,14 +72,18 @@ function HomePage() {
       </div>
 
       <div className="main-body">
-        {movies.length === 0 ? (
-          <p>No Movie Added Yet</p>
+        {displayedMovies.length === 0 ? (
+          searchResults !== null ? (
+            <h1>No Items Found</h1>
+          ) : (
+            <p>No Movie Added Yet</p>
+          )
         ) : (
-          movies.map((movie) => (
+          displayedMovies.map((movie) => (
             <div className="movie" key={movie.id}>
               <div className="movie-poster-description">
                 <div className="movie-img">
-                  <img src={movie.imgsrc} alt={movie.title} />
+                  <img src={movie.imgsrc} />
                 </div>
 
                 <div className="title-rate">

@@ -9,11 +9,11 @@ const app = express();
 app.use(cors());
 const port = 3000;
 const db = new pg.Client({
-  user: "postgres",
-  host: "localhost",
-  database: "myMovies",
-  password: "rhythm161469",
-  port: 5432,
+  user: process.env.PG_USER,
+  host: process.env.PG_HOST,
+  database: process.env.PG_DATABASE,
+  password: process.env.PG_PASSWORD,
+  port: process.env.PG_PORT,
 });
 db.connect();
 
@@ -22,13 +22,6 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(express.static("public"));
 
-let movieData = [];
-
-async function getData() {
-  const result = await db.query("SELECT * FROM movies ORDER BY id DESC");
-  movieData = result.rows;
-}
-
 app.get("/api/movies", async (req, res) => {
   const result = await db.query("SELECT * FROM movies ORDER BY id DESC");
   res.json(result.rows);
@@ -36,41 +29,42 @@ app.get("/api/movies", async (req, res) => {
 
 app.post("/api/movies", async (req, res) => {
   const { title, description, rating } = req.body;
-  const response = await fetch(
-    `https://www.omdbapi.com/?apikey=${apiKey}&t=${encodeURIComponent(title)}`,
-  );
-  const data = await response.json();
-  await db.query(
-    "INSERT INTO movies (title, rating, description, imgsrc) VALUES ($1, $2, $3, $4)",
-    [title, rating, description, data.Poster],
-  );
-  res.json({
-    message: "Movie added successfully",
-  });
-});
+  const fallbackPoster =
+    "https://cdn.displate.com/artwork/735x1024/2022-04-15/7422bfe15b3ea7b5933dffd896e9c7f9_46003a1b7353dc7b5a02949bd074432a.jpg";
 
-app.post("/search", async (req, res) => {
-  const name = req.body.srcfield.trim();
+  let poster = fallbackPoster;
 
-  const result = await db.query(
-    "SELECT * FROM movies WHERE LOWER(title) = LOWER($1)",
-    [name],
-  );
+  try {
+    const response = await fetch(
+      `https://www.omdbapi.com/?apikey=${apiKey}&t=${encodeURIComponent(title)}`,
+    );
 
-  if (result.rows.length === 0) {
-    const allMovies = await db.query("SELECT * FROM movies ORDER BY id DESC");
+    if (response.ok) {
+      const data = await response.json();
 
-    return res.render("index.ejs", {
-      total: allMovies.rows.length,
-      movieData: allMovies.rows,
-      error: "No such movie found",
-    });
+      if (data.Response === "True" && data.Poster && data.Poster !== "N/A") {
+        poster = data.Poster;
+      }
+    }
+  } catch (err) {
+    console.error("OMDb fetch failed:", err);
   }
 
-  res.render("index.ejs", {
-    total: result.rows.length,
-    movieData: result.rows,
-  });
+  await db.query(
+    "INSERT INTO movies (title, rating, description, imgsrc) VALUES ($1, $2, $3, $4)",
+    [title, rating, description, poster],
+  );
+
+  res.json({ message: "Movie added successfully" });
+});
+
+app.get("/api/movies/search", async (req, res) => {
+  const { title } = req.query;
+  const result = await db.query(
+    "SELECT * FROM movies WHERE LOWER(title) LIKE LOWER('%' || $1 || '%')",
+    [title.trim()],
+  );
+  res.json(result.rows);
 });
 
 app.listen(port, () => {
