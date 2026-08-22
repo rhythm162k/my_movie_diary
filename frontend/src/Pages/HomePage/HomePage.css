@@ -4,6 +4,7 @@
   padding: 1rem;
   margin: 15px;
   border-radius: 12px;
+  background-image: url("https://www.transparenttextures.com/patterns/cartographer.png");
 }
 
 .upper-part {
@@ -22,8 +23,9 @@
   align-items: center;
 }
 
-.title-add h1 {
+.title-add img {
   grid-column: span 2;
+  width: 200px;
 }
 
 .search {
@@ -157,21 +159,14 @@
     padding: 0.75rem;
   }
 
-  .title-add h1 {
-    font-size: 1.8rem;
-  }
-
   .title-add h4 {
     font-size: 1rem;
+    text-align: start;
   }
 
   .title-add {
     grid-template-columns: 1fr;
     text-align: center;
-  }
-
-  .title-add h1 {
-    grid-column: auto;
   }
 
   .movie {

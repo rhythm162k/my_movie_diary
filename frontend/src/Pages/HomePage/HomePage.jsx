@@ -48,7 +48,7 @@ function HomePage() {
     <div className="container">
       <div className="upper-part">
         <div className="title-add">
-          <h1>Movie Diary</h1>
+          <img src="/app-logo.png" />
           <h4>Total: {displayedMovies.length}</h4>
 
           <Link to="/add-new">

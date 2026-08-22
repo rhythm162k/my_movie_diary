@@ -7,7 +7,7 @@ import cors from "cors";
 dotenv.config();
 const app = express();
 app.use(cors());
-const port = 3000;
+const port = process.env.PORT || 3000;
 const db = new pg.Client({
   user: process.env.PG_USER,
   host: process.env.PG_HOST,
@@ -15,6 +15,10 @@ const db = new pg.Client({
   password: process.env.PG_PASSWORD,
   port: process.env.PG_PORT,
 });
+
+// const db = new pg.Client({
+//   connectionString: process.env.DATABASE_URL,
+// });
 db.connect();
 
 const apiKey = process.env.OMDB_API_KEY;
