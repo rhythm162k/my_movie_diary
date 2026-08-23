@@ -1,9 +1,12 @@
 import React from "react";
 import axios from "axios";
-import { Link } from "react-router";
+import { useNavigate, Link } from "react-router";
 import "./LoginPage.css";
 
 function LoginPage() {
+  const [error, setError] = React.useState("");
+  const navigate = useNavigate();
+
   const [loginData, setLoginData] = React.useState({
     email: "",
     password: "",
@@ -19,8 +22,19 @@ function LoginPage() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    console.log(loginData);
-    await axios.post("http://localhost:3000/api/login", loginData);
+    setError("");
+    try {
+      await axios.post("http://localhost:3000/api/login", loginData);
+      navigate("/home");
+    } catch (error) {
+      if (error.response?.status === 403) {
+        setError(error.response.data.message);
+      } else if (error.response?.status === 404) {
+        setError(error.response.data.message);
+      } else {
+        setError("Something went wrong. Please try again.");
+      }
+    }
   };
   return (
     <main className="login-page">
@@ -56,6 +70,8 @@ function LoginPage() {
               required
             />
           </div>
+
+          {error && <p className="register-error">{error}</p>}
 
           <button type="submit" className="login-button">
             Sign In

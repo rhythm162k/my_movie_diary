@@ -23,7 +23,7 @@ function AddMovie() {
   const handleSubmit = async (event) => {
     event.preventDefault();
     await axios.post("http://localhost:3000/api/movies", formData);
-    navigate("/");
+    navigate("/home");
   };
 
   return (
@@ -80,7 +80,7 @@ function AddMovie() {
           <div className="button-group">
             <button type="submit">Add Movie</button>
 
-            <Link to="/" className="cancel-btn">
+            <Link to="/home" className="cancel-btn">
               Cancel
             </Link>
           </div>

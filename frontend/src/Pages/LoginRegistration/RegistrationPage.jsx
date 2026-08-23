@@ -1,9 +1,12 @@
 import React from "react";
 import axios from "axios";
-import { Link } from "react-router";
+import { useNavigate, Link } from "react-router";
 import "./RegistrationPage.css";
 
 function RegistrationPage() {
+  const [error, setError] = React.useState("");
+  const navigate = useNavigate();
+
   const [registrationData, setRegistrationData] = React.useState({
     name: "",
     email: "",
@@ -21,11 +24,25 @@ function RegistrationPage() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    console.log(registrationData);
-    await axios.post(
-      "http://localhost:3000/api/registration",
-      registrationData,
-    );
+    setError("");
+    if (registrationData.password !== registrationData.confirmPassword) {
+      setError("Password didn't match");
+      return;
+    }
+    try {
+      await axios.post("http://localhost:3000/api/registration", {
+        name: registrationData.name,
+        email: registrationData.email,
+        password: registrationData.password,
+      });
+      navigate("/home");
+    } catch (error) {
+      if (error.response?.status === 409) {
+        setError(error.response.data.message);
+      } else {
+        setError("Something went wrong. Please try again.");
+      }
+    }
   };
 
   return (
@@ -88,6 +105,8 @@ function RegistrationPage() {
               required
             />
           </div>
+
+          {error && <p className="register-error">{error}</p>}
 
           <button type="submit" className="register-button">
             Create Account

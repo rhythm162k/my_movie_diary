@@ -123,6 +123,12 @@
   text-decoration: underline;
 }
 
+.register-error {
+  margin: -4px 0 0;
+  color: #dc2626;
+  font-size: 14px;
+}
+
 /* Tablet */
 @media (max-width: 600px) {
   .register-page {
