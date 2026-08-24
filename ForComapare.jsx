@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { useSearchParams, Link } from "react-router";
+import { useSearchParams } from "react-router";
+import { Link } from "react-router";
 import axios from "axios";
 import Pagination from "../../components/pagination";
 import "./HomePage.css";
@@ -11,66 +12,62 @@ function HomePage() {
   const [search, setSearch] = useState(() => searchParams.get("search") || "");
   const [currentPage, setCurrentPage] = useState(1);
 
-  const moviesPerPage = 5;
+  const moviesPerPage = 10;
+  const totalPages = Math.ceil(movies.length / moviesPerPage);
+  // Start/end indexes for the current page
+  const startIndex = (currentPage - 1) * moviesPerPage;
 
   useEffect(() => {
     const searchQuery = searchParams.get("search");
 
     if (searchQuery) {
       const fetchSearchResults = async () => {
-        try {
-          const response = await axios.get(
-            `http://localhost:3000/api/movies/search?title=${encodeURIComponent(
-              searchQuery,
-            )}`,
-          );
+        const response = await axios.get(
+          `http://localhost:3000/api/movies/search?title=${encodeURIComponent(
+            searchQuery,
+          )}`,
+        );
 
-          setSearchResults(response.data);
-        } catch (error) {
-          console.error("Failed to fetch search results:", error);
-        }
+        const currentSearchedMovies = response.data.slice(
+          startIndex,
+          startIndex + moviesPerPage,
+        );
+
+        setSearchResults(currentSearchedMovies);
       };
 
       fetchSearchResults();
     } else {
       const fetchMovieData = async () => {
-        try {
-          const response = await axios.get("http://localhost:3000/api/movies");
-
-          setMovies(response.data);
-
-          setSearchResults(null);
-        } catch (error) {
-          console.error("Failed to fetch movies:", error);
-        }
+        const response = await axios.get("http://localhost:3000/api/movies");
+        const currentMovies = response.data.slice(
+          startIndex,
+          startIndex + moviesPerPage,
+        );
+        setMovies(currentMovies);
+        setSearchResults(null);
       };
 
       fetchMovieData();
     }
   }, [searchParams]);
 
-  const displayedMovies = searchResults !== null ? searchResults : movies;
-  const totalPages = Math.ceil(displayedMovies.length / moviesPerPage);
-  const startIndex = (currentPage - 1) * moviesPerPage;
-  const paginatedMovies = displayedMovies.slice(
-    startIndex,
-    startIndex + moviesPerPage,
-  );
-
   const handleSearch = (event) => {
     event.preventDefault();
-    setCurrentPage(1);
     setSearchParams({ search });
   };
+
+  const displayedMovies = searchResults !== null ? searchResults : movies;
 
   return (
     <div className="container">
       <div className="upper-part">
         <div className="title-add">
-          <img src="/app-logo.png" alt="App logo" />
+          <img src="/app-logo.png" />
           <h4>Total: {displayedMovies.length}</h4>
+
           <Link to="/add-new">
-            <button type="button">Add New</button>
+            <button type="submit">Add New</button>
           </Link>
         </div>
 
@@ -90,18 +87,18 @@ function HomePage() {
       </div>
 
       <div className="main-body">
-        {paginatedMovies.length === 0 ? (
+        {displayedMovies.length === 0 ? (
           searchResults !== null ? (
             <h1>No Items Found</h1>
           ) : (
             <p>No Movie Added Yet</p>
           )
         ) : (
-          paginatedMovies.map((movie) => (
+          displayedMovies.map((movie) => (
             <div className="movie" key={movie.id}>
               <div className="movie-poster-description">
                 <div className="movie-img">
-                  <img src={movie.imgsrc} alt={movie.title} />
+                  <img src={movie.imgsrc} />
                 </div>
 
                 <div className="title-rate">
@@ -117,7 +114,6 @@ function HomePage() {
             </div>
           ))
         )}
-
         <Pagination
           currentPage={currentPage}
           totalPages={totalPages}
