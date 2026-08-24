@@ -11,7 +11,7 @@ function HomePage() {
   const [search, setSearch] = useState(() => searchParams.get("search") || "");
   const [currentPage, setCurrentPage] = useState(1);
 
-  const moviesPerPage = 5;
+  const moviesPerPage = 10;
 
   useEffect(() => {
     const searchQuery = searchParams.get("search");
@@ -92,9 +92,13 @@ function HomePage() {
       <div className="main-body">
         {paginatedMovies.length === 0 ? (
           searchResults !== null ? (
-            <h1>No Items Found</h1>
+            <div className="nothing-there">
+              <img src="/not-found.png" />
+            </div>
           ) : (
-            <p>No Movie Added Yet</p>
+            <div className="nothing-there">
+              <img src="/not-added.png" />
+            </div>
           )
         ) : (
           paginatedMovies.map((movie) => (
