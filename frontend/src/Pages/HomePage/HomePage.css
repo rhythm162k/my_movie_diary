@@ -7,6 +7,8 @@
   background-image: url("https://www.transparenttextures.com/patterns/cartographer.png");
 }
 
+/* ---------- Header ---------- */
+
 .upper-part {
   display: flex;
   justify-content: space-between;
@@ -31,7 +33,6 @@
 .search {
   display: flex;
   gap: 0.75rem;
-  margin-top: 1.5rem;
 }
 
 .search input {
@@ -59,13 +60,14 @@
   opacity: 0.9;
 }
 
+/* ---------- Movie Grid ---------- */
+
 .main-body {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
   margin: 1.5rem auto;
   max-width: 1200px;
   gap: 10px;
-  height: 50vh;
 }
 
 .nothing-there {
@@ -75,54 +77,120 @@
   grid-column: span 3;
 }
 
+/* ---------- Movie Card ---------- */
+
 .movie {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
   padding: 1rem;
   background-color: var(--border);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 12px;
+  overflow: hidden;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
 }
+
+.movie:hover {
+  transform: translateY(-3px);
+  border-color: rgba(255, 255, 255, 0.14);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+/* ---------- Poster + Title ---------- */
 
 .movie-poster-description {
   display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 1.5rem;
-}
-
-.movie-img {
-  margin-right: 0;
+  grid-template-columns: 120px 1fr;
+  gap: 1rem;
+  align-items: start;
 }
 
 .movie-img img {
-  width: 150px;
-  max-width: 100%;
+  width: 120px;
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
   display: block;
   border-radius: 8px;
 }
 
+.title-rate {
+  min-width: 0;
+}
+
+.title-rate h2 {
+  margin: 0.25rem 0 0.5rem;
+  font-size: 1.15rem;
+  line-height: 1.25;
+}
+
+.title-rate h5 {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 500;
+  opacity: 0.75;
+}
+
+/* ---------- Description ---------- */
+
 .description {
   margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.description * {
-  margin-left: 0.5rem;
-  margin-top: 0.5rem;
+.description h3 {
+  margin: 0 0 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 600;
 }
 
-.title-rate * {
-  margin-left: 0.5rem;
-  margin-top: 0.5rem;
+.description p {
+  margin: 0;
+  line-height: 1.5;
+  font-size: 0.9rem;
+  opacity: 0.8;
+}
+
+/* ---------- Delete Button ---------- */
+
+.delete-btn {
+  justify-self: end;
+  align-self: end;
+  margin-top: 1rem;
+  padding: 0.35rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text);
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  opacity: 0.55;
+  transition:
+    color 0.2s ease,
+    opacity 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.delete-btn:hover {
+  color: #ff5c5c;
+  opacity: 1;
+  background-color: rgba(255, 92, 92, 0.08);
 }
 
 /* ---------- Tablet ---------- */
+
 @media (max-width: 1300px) {
   .main-body {
-    display: grid;
     grid-template-columns: 1fr 1fr;
     margin: 1rem auto;
   }
 
   .nothing-there {
-    display: flex;
-    justify-content: center;
     grid-column: span 2;
   }
 }
@@ -133,36 +201,18 @@
     padding: 1rem;
   }
 
-  .upper-part {
-    flex-direction: column;
-    gap: 1.5rem;
-    margin: 1rem auto;
-  }
-
-  .title-add {
-    width: 100%;
-  }
-
-  .search {
-    width: 100%;
-    margin-top: 0;
-    flex-direction: column;
-  }
-
   .search input,
   .search button {
     width: 100%;
   }
 
   .main-body {
-    display: grid;
     grid-template-columns: 1fr 1fr;
     margin: 1rem auto;
   }
 
   .nothing-there {
-    display: flex;
-    justify-content: center;
+    grid-column: span 2;
   }
 
   .movie-poster-description {
@@ -173,7 +223,11 @@
   }
 
   .movie-img img {
-    width: 180px;
+    width: 160px;
+  }
+
+  .title-rate {
+    width: 100%;
   }
 
   .description {
@@ -189,20 +243,34 @@
     padding: 0.75rem;
   }
 
+  .upper-part {
+    flex-direction: column;
+    gap: 1.5rem;
+    margin: 1rem auto;
+  }
+
+  .search {
+    width: 100%;
+    margin-top: 0;
+    flex-direction: column;
+  }
+
+  .title-add {
+    text-align: center;
+  }
+
   .title-add h4 {
     font-size: 1rem;
     text-align: start;
   }
 
-  .title-add {
-    grid-template-columns: 1fr;
-    text-align: center;
-  }
-
   .main-body {
-    display: grid;
     grid-template-columns: 1fr;
     margin: 1rem auto;
+  }
+
+  .nothing-there {
+    grid-column: span 1;
   }
 
   .movie {

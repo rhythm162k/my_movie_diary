@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { useSearchParams, Link } from "react-router";
 import axios from "axios";
+import DeleteIcon from "@mui/icons-material/Delete";
 import Pagination from "../../components/pagination";
+import Header from "./Header";
 import "./HomePage.css";
 
 function HomePage() {
@@ -10,6 +12,7 @@ function HomePage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState(() => searchParams.get("search") || "");
   const [currentPage, setCurrentPage] = useState(1);
+  const [deleted, setDeleted] = useState(false);
 
   const moviesPerPage = 10;
 
@@ -47,7 +50,7 @@ function HomePage() {
 
       fetchMovieData();
     }
-  }, [searchParams]);
+  }, [searchParams, deleted]);
 
   const displayedMovies = searchResults !== null ? searchResults : movies;
   const totalPages = Math.ceil(displayedMovies.length / moviesPerPage);
@@ -63,11 +66,22 @@ function HomePage() {
     setSearchParams({ search });
   };
 
+  const handleDelete = async (movieId) => {
+    try {
+      await axios.delete("http://localhost:3000/api/delete", {
+        params: { id: movieId },
+      });
+      setDeleted(!deleted);
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
   return (
     <div className="container">
+      <Header />
       <div className="upper-part">
         <div className="title-add">
-          <img src="/app-logo.png" alt="App logo" />
           <h4>Total: {displayedMovies.length}</h4>
           <Link to="/add-new">
             <button type="button">Add New</button>
@@ -118,16 +132,21 @@ function HomePage() {
                 <h3>My Description:</h3>
                 <p>{movie.description}</p>
               </div>
+              <button
+                className="delete-btn"
+                onClick={() => handleDelete(movie.id)}
+              >
+                <DeleteIcon />
+              </button>
             </div>
           ))
         )}
-
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={setCurrentPage}
-        />
       </div>
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={setCurrentPage}
+      />
     </div>
   );
 }

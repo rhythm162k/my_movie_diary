@@ -1,11 +1,13 @@
 import React from "react";
 import axios from "axios";
 import { useNavigate, Link } from "react-router";
+import { useAuth } from "../../context/AuthContext";
 import "./LoginPage.css";
 
 function LoginPage() {
   const [error, setError] = React.useState("");
   const navigate = useNavigate();
+  const { setAuthenticated } = useAuth();
 
   const [loginData, setLoginData] = React.useState({
     email: "",
@@ -25,6 +27,7 @@ function LoginPage() {
     setError("");
     try {
       await axios.post("http://localhost:3000/api/login", loginData);
+      setAuthenticated(true);
       navigate("/home");
     } catch (error) {
       if (error.response?.status === 403) {

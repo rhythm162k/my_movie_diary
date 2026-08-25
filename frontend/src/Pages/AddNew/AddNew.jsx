@@ -1,10 +1,12 @@
 import axios from "axios";
 import React from "react";
 import { useNavigate } from "react-router";
+import ErrorIcon from "@mui/icons-material/Error";
 import { Link } from "react-router";
 import "./AddNew.css";
 
 function AddMovie() {
+  const [error, setError] = React.useState("");
   const navigate = useNavigate();
   const [formData, setFormData] = React.useState({
     title: "",
@@ -22,8 +24,17 @@ function AddMovie() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    await axios.post("http://localhost:3000/api/movies", formData);
-    navigate("/home");
+    setError("");
+    try {
+      await axios.post("http://localhost:3000/api/movies", formData);
+      navigate("/home");
+    } catch (error) {
+      if (error.response?.status === 409) {
+        setError(error.response.data.message);
+      } else {
+        setError("Something went wrong. Please try again.");
+      }
+    }
   };
 
   return (
@@ -76,6 +87,13 @@ function AddMovie() {
               required
             />
           </div>
+
+          {error && (
+            <div className="adding-error">
+              <ErrorIcon className="error-icon" />
+              <p className="adding-error">{error}</p>
+            </div>
+          )}
 
           <div className="button-group">
             <button type="submit">Add Movie</button>

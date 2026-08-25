@@ -1,0 +1,7 @@
+.logout-button {
+  color: var(--text);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}

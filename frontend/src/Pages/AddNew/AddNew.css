@@ -50,6 +50,19 @@
   border-color: var(--primary);
 }
 
+.adding-error {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  color: var(--text);
+  font-size: 14px;
+}
+
+.adding-error .error-icon {
+  color: var(--negative);
+}
+
 .button-group {
   display: flex;
   gap: 1rem;

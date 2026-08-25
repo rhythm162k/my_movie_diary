@@ -1,8 +1,6 @@
 import "./Pagination.css";
 
 function Pagination({ currentPage, totalPages, onPageChange }) {
-  console.log("currentPage:", currentPage);
-  console.log("totalPages:", totalPages);
   if (totalPages <= 1) {
     return null;
   }

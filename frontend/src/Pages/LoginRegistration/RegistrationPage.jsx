@@ -1,11 +1,13 @@
 import React from "react";
 import axios from "axios";
 import { useNavigate, Link } from "react-router";
+import { useAuth } from "../../context/AuthContext";
 import "./RegistrationPage.css";
 
 function RegistrationPage() {
   const [error, setError] = React.useState("");
   const navigate = useNavigate();
+  const { setAuthenticated } = useAuth();
 
   const [registrationData, setRegistrationData] = React.useState({
     name: "",
@@ -35,6 +37,7 @@ function RegistrationPage() {
         email: registrationData.email,
         password: registrationData.password,
       });
+      setAuthenticated(true);
       navigate("/home");
     } catch (error) {
       if (error.response?.status === 409) {

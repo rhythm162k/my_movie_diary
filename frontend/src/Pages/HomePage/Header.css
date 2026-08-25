@@ -1,0 +1,11 @@
+.header-element {
+  margin: 1.5rem auto;
+  margin-top: 1.5rem;
+  max-width: 1200px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.header-element img {
+  width: 250px;
+}
