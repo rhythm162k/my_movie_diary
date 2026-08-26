@@ -5,6 +5,8 @@ import pg from "pg";
 import cors from "cors";
 import bcrypt from "bcrypt";
 import session from "express-session";
+import passport from "passport";
+import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 
 dotenv.config();
 
@@ -49,6 +51,59 @@ app.use(
   }),
 );
 
+app.use(passport.initialize());
+
+passport.use(
+  new GoogleStrategy(
+    {
+      clientID: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      callbackURL: process.env.GOOGLE_CALLBACK_URL,
+    },
+
+    async (accessToken, refreshToken, profile, done) => {
+      try {
+        const googleId = profile.id;
+        const email = profile.emails[0].value;
+        const name = profile.displayName;
+
+        // Check whether this Google account already exists
+        const existingGoogleUser = await db.query(
+          "SELECT userid FROM users WHERE googleid = $1",
+          [googleId],
+        );
+
+        if (existingGoogleUser.rows.length > 0) {
+          return done(null, existingGoogleUser.rows[0]);
+        }
+
+        // Check whether this email already belongs to an account
+        const existingEmailUser = await db.query(
+          "SELECT userid FROM users WHERE email = $1",
+          [email],
+        );
+
+        if (existingEmailUser.rows.length > 0) {
+          return done(null, existingEmailUser.rows[0]);
+        }
+
+        // No existing account, so create one
+        const result = await db.query(
+          `INSERT INTO users (name, email, googleid)
+           VALUES ($1, $2, $3)
+           RETURNING userid`,
+          [name, email, googleId],
+        );
+
+        return done(null, result.rows[0]);
+      } catch (error) {
+        console.error("Google authentication error:", error);
+        return done(error, null);
+      }
+    },
+  ),
+);
+
 app.get("/api/session", (req, res) => {
   if (!req.session.userId) {
     return res.status(401).json({
@@ -60,6 +115,26 @@ app.get("/api/session", (req, res) => {
     userId: req.session.userId,
   });
 });
+
+app.get(
+  "/auth/google",
+  passport.authenticate("google", {
+    scope: ["profile", "email"],
+  }),
+);
+
+app.get(
+  "/auth/google/callback",
+  passport.authenticate("google", {
+    failureRedirect: "http://localhost:5173/login",
+    session: false,
+  }),
+  (req, res) => {
+    req.session.userId = req.user.userid;
+
+    res.redirect("http://localhost:5173/home");
+  },
+);
 
 app.post("/api/logout", (req, res) => {
   req.session.destroy((error) => {

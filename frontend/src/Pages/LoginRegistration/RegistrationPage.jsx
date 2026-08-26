@@ -116,6 +116,15 @@ function RegistrationPage() {
           </button>
         </form>
 
+        <button
+          type="button"
+          onClick={() => {
+            window.location.href = "http://localhost:3000/auth/google";
+          }}
+        >
+          Continue with Google
+        </button>
+
         <p className="login-text">
           Already have an account? <Link to="/login">Sign in</Link>
         </p>

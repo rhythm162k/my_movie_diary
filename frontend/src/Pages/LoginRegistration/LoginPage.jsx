@@ -81,6 +81,15 @@ function LoginPage() {
           </button>
         </form>
 
+        <button
+          type="button"
+          onClick={() => {
+            window.location.href = "http://localhost:3000/auth/google";
+          }}
+        >
+          Continue with Google
+        </button>
+
         <p className="signup-text">
           Don't have an account? <Link to="/registration">Create one</Link>
         </p>
