@@ -71,7 +71,8 @@
 
 .button-group button,
 .cancel-btn {
-  padding: 0.8rem 1.5rem;
+  padding: 0.5rem 0.75rem;
+  border: none;
   border-radius: 8px;
   text-decoration: none;
   cursor: pointer;
@@ -82,7 +83,8 @@
 .button-group button {
   border: none;
   background: var(--primary);
-  color: white;
+  color: var(--bg);
+  font-weight: 900;
 }
 
 .cancel-btn {
@@ -96,6 +98,11 @@
 .button-group button:hover,
 .cancel-btn:hover {
   opacity: 0.9;
+}
+
+.add-movie-btn,
+.cancel-link-btn {
+  width: 70px;
 }
 
 /* ---------- Tablet ---------- */

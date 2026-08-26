@@ -3,16 +3,18 @@ import React from "react";
 import { useNavigate } from "react-router";
 import ErrorIcon from "@mui/icons-material/Error";
 import { Link } from "react-router";
+import LoadingSVG from "../../components/LoadingSVG";
 import "./AddNew.css";
 
 function AddMovie() {
-  const [error, setError] = React.useState("");
   const navigate = useNavigate();
+  const [error, setError] = React.useState("");
   const [formData, setFormData] = React.useState({
     title: "",
     description: "",
     rating: "",
   });
+  const [loading, setLoading] = React.useState(false);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -25,10 +27,12 @@ function AddMovie() {
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError("");
+    setLoading(true);
     try {
       await axios.post("http://localhost:3000/api/movies", formData);
       navigate("/home");
     } catch (error) {
+      setLoading(false);
       if (error.response?.status === 409) {
         setError(error.response.data.message);
       } else {
@@ -96,10 +100,22 @@ function AddMovie() {
           )}
 
           <div className="button-group">
-            <button type="submit">Add Movie</button>
+            <button type="submit" className="custom-btn" disabled={loading}>
+              {loading ? (
+                <LoadingSVG />
+              ) : (
+                <>
+                  <img
+                    className="add-movie-btn"
+                    src="/add-movie.png"
+                    alt="Add Movie"
+                  />
+                </>
+              )}
+            </button>
 
             <Link to="/home" className="cancel-btn">
-              Cancel
+              <img className="cancel-link-btn" src="/cancel.png" />
             </Link>
           </div>
         </form>

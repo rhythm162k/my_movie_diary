@@ -27,7 +27,7 @@
 
 .title-add img {
   grid-column: span 2;
-  width: 200px;
+  width: 70px;
 }
 
 .search {
@@ -46,13 +46,16 @@
 
 .search button,
 .title-add button {
-  padding: 0.75rem 1.25rem;
+  padding: 0.5rem 0.75rem;
   border: none;
   border-radius: 8px;
   background: var(--primary);
-  color: white;
   cursor: pointer;
   transition: opacity 0.2s;
+}
+
+.search_btn {
+  width: 70px;
 }
 
 .search button:hover,

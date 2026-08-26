@@ -187,8 +187,8 @@ app.post("/api/movies", async (req, res) => {
   const { title, description, rating } = req.body;
 
   const existingMovie = await db.query(
-    "SELECT id FROM movies WHERE title = $1",
-    [title],
+    "SELECT id FROM movies WHERE userid = $1 AND lower(title) = lower($2)",
+    [req.session.userId, title],
   );
 
   if (existingMovie.rows.length > 0) {

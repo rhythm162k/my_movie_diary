@@ -1,0 +1,19 @@
+.custom-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px; /* Spaces out text, icon, and loader */
+
+  padding: 10px 20px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  border-radius: 6px;
+}
+
+/* Restrain the sizes of the SVG and PNG image */
+.custom-btn .spinner {
+  width: 24px;
+  height: 24px;
+}

@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { useSearchParams, Link } from "react-router";
 import axios from "axios";
-import DeleteIcon from "@mui/icons-material/Delete";
 import Pagination from "../../components/pagination";
+import MovieCard from "./MovieCard";
 import Header from "./Header";
 import "./HomePage.css";
 
@@ -84,7 +84,9 @@ function HomePage() {
         <div className="title-add">
           <h4>Total: {displayedMovies.length}</h4>
           <Link to="/add-new">
-            <button type="button">Add New</button>
+            <button type="button">
+              <img className="add_new_btn" src="/add-new.png" />
+            </button>
           </Link>
         </div>
 
@@ -99,7 +101,9 @@ function HomePage() {
             required
           />
 
-          <button type="submit">Search</button>
+          <button type="submit">
+            <img className="search_btn" src="/search.png" />
+          </button>
         </form>
       </div>
 
@@ -116,29 +120,7 @@ function HomePage() {
           )
         ) : (
           paginatedMovies.map((movie) => (
-            <div className="movie" key={movie.id}>
-              <div className="movie-poster-description">
-                <div className="movie-img">
-                  <img src={movie.imgsrc} alt={movie.title} />
-                </div>
-
-                <div className="title-rate">
-                  <h2>{movie.title}</h2>
-                  <h5>Rating: {movie.rating}/10</h5>
-                </div>
-              </div>
-
-              <div className="description">
-                <h3>My Description:</h3>
-                <p>{movie.description}</p>
-              </div>
-              <button
-                className="delete-btn"
-                onClick={() => handleDelete(movie.id)}
-              >
-                <DeleteIcon />
-              </button>
-            </div>
+            <MovieCard movie={movie} handleDelete={handleDelete} />
           ))
         )}
       </div>

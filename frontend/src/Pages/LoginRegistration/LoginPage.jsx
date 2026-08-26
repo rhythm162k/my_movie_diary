@@ -2,10 +2,14 @@ import React from "react";
 import axios from "axios";
 import { useNavigate, Link } from "react-router";
 import { useAuth } from "../../context/AuthContext";
+import LoadingSVG from "../../components/LoadingSVG";
+import GoogleBTN from "./GoogleBTN";
 import "./LoginPage.css";
+import "./Divider.css";
 
 function LoginPage() {
   const [error, setError] = React.useState("");
+  const [loading, setLoading] = React.useState(false);
   const navigate = useNavigate();
   const { setAuthenticated } = useAuth();
 
@@ -25,11 +29,13 @@ function LoginPage() {
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError("");
+    setLoading(true);
     try {
       await axios.post("http://localhost:3000/api/login", loginData);
       setAuthenticated(true);
       navigate("/home");
     } catch (error) {
+      setLoading(false);
       if (error.response?.status === 403) {
         setError(error.response.data.message);
       } else if (error.response?.status === 404) {
@@ -76,18 +82,28 @@ function LoginPage() {
 
           {error && <p className="register-error">{error}</p>}
 
-          <button type="submit" className="login-button">
-            Sign In
+          <button
+            type="submit"
+            className="login-button custom-btn"
+            disabled={loading}
+          >
+            {loading ? <LoadingSVG /> : "Sign In"}
           </button>
         </form>
 
+        <div class="divider">
+          <span>or</span>
+        </div>
+
         <button
           type="button"
+          class="social-btn google-material"
           onClick={() => {
             window.location.href = "http://localhost:3000/auth/google";
           }}
         >
-          Continue with Google
+          <GoogleBTN />
+          <span>Continue with Google</span>
         </button>
 
         <p className="signup-text">
