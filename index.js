@@ -136,9 +136,12 @@ app.get(
   }),
   (req, res) => {
     console.log("Session object:", req.session);
-    req.session.userId = req.user.userid;
+    console.log("Protocol:", req.protocol);
+    console.log("Secure:", req.secure);
+    console.log("X-Forwarded-Proto:", req.get("X-Forwarded-Proto"));
     console.log("Session ID:", req.sessionID);
     console.log("Session cookie:", req.session.cookie);
+    req.session.userId = req.user.userid;
 
     req.session.save((err) => {
       if (err) {
