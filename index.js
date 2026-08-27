@@ -127,7 +127,7 @@ app.get(
 app.get(
   "/auth/google/callback",
   passport.authenticate("google", {
-    failureRedirect: `${process.env.FRONTEND_URL || "http://localhost:5173"}/login`,
+    failureRedirect: `${process.env.FRONTEND_URL || "http://localhost:5173"}/login?google=failed`,
     session: false,
   }),
   (req, res) => {
