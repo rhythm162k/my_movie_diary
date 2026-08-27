@@ -138,21 +138,11 @@ app.get(
 
 app.get(
   "/auth/google/callback",
-  (req, res, next) => {
-    console.log("CALLBACK COOKIE:", req.headers.cookie);
-    console.log("CALLBACK SESSION ID:", req.sessionID);
-    console.log("CALLBACK SESSION:", req.session);
-
-    next();
-  },
   passport.authenticate("google", {
     failureRedirect: `${process.env.FRONTEND_URL || "http://localhost:5173"}/login`,
     session: false,
   }),
   (req, res) => {
-    console.log("AFTER PASSPORT:", req.sessionID);
-    console.log("USER:", req.user);
-
     req.session.userId = req.user.userid;
 
     req.session.save((err) => {
@@ -160,8 +150,6 @@ app.get(
         console.error("Session save error:", err);
         return res.status(500).send("Session error");
       }
-
-      console.log("Session saved:", req.session.userId);
 
       res.redirect(
         `${process.env.FRONTEND_URL || "http://localhost:5173"}/home`,
