@@ -145,6 +145,11 @@ app.get(
       }
 
       console.log("Session saved:", req.session.userId);
+      res.cookie("testCookie", "hello", {
+        httpOnly: true,
+        secure: true,
+        sameSite: "none",
+      });
 
       res.redirect(
         `${process.env.FRONTEND_URL || "http://localhost:5173"}/home`,
