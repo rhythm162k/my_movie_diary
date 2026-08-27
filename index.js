@@ -11,6 +11,7 @@ import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 dotenv.config();
 
 const app = express();
+app.set("trust proxy", 1);
 const port = process.env.PORT || 3000;
 const saltRounds = 15;
 
