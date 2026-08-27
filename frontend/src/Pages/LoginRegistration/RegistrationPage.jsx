@@ -6,6 +6,7 @@ import LoadingSVG from "../../components/LoadingSVG";
 import GoogleBTN from "./GoogleBTN";
 import "./RegistrationPage.css";
 import "./Divider.css";
+import API_URL from "../../api";
 
 function RegistrationPage() {
   const [error, setError] = React.useState("");
@@ -37,7 +38,7 @@ function RegistrationPage() {
       return;
     }
     try {
-      await axios.post("http://localhost:3000/api/registration", {
+      await axios.post(`${API_URL}/api/registration`, {
         name: registrationData.name,
         email: registrationData.email,
         password: registrationData.password,
@@ -134,7 +135,7 @@ function RegistrationPage() {
           type="button"
           class="social-btn google-material"
           onClick={() => {
-            window.location.href = "http://localhost:3000/auth/google";
+            window.location.href = `${API_URL}/auth/google`;
           }}
         >
           <GoogleBTN />

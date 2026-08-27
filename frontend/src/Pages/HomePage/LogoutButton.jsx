@@ -3,6 +3,7 @@ import axios from "axios";
 import "./LogoutButton.css";
 import { useNavigate } from "react-router";
 import { useAuth } from "../../context/AuthContext";
+import API_URL from "../../api";
 
 function LogoutButton() {
   const navigate = useNavigate();
@@ -10,8 +11,7 @@ function LogoutButton() {
 
   const handleLogout = async () => {
     try {
-      await axios.post("http://localhost:3000/api/logout");
-
+      axios.post(`${API_URL}/api/logout`);
       setAuthenticated(false);
       navigate("/login");
     } catch (error) {

@@ -5,6 +5,7 @@ import Pagination from "../../components/Pagination";
 import MovieCard from "./MovieCard";
 import Header from "./Header";
 import "./HomePage.css";
+import API_URL from "../../api";
 
 function HomePage() {
   const [movies, setMovies] = useState([]);
@@ -23,7 +24,7 @@ function HomePage() {
       const fetchSearchResults = async () => {
         try {
           const response = await axios.get(
-            `http://localhost:3000/api/movies/search?title=${encodeURIComponent(
+            `${API_URL}/api/movies/search?title=${encodeURIComponent(
               searchQuery,
             )}`,
           );
@@ -38,7 +39,7 @@ function HomePage() {
     } else {
       const fetchMovieData = async () => {
         try {
-          const response = await axios.get("http://localhost:3000/api/movies");
+          const response = await axios.get(`${API_URL}/api/movies`);
 
           setMovies(response.data);
 
@@ -68,7 +69,7 @@ function HomePage() {
 
   const handleDelete = async (movieId) => {
     try {
-      await axios.delete("http://localhost:3000/api/delete", {
+      await axios.delete(`${API_URL}/api/delete`, {
         params: { id: movieId },
       });
       setDeleted(!deleted);

@@ -5,6 +5,7 @@ import ErrorIcon from "@mui/icons-material/Error";
 import { Link } from "react-router";
 import LoadingSVG from "../../components/LoadingSVG";
 import "./AddNew.css";
+import API_URL from "../../api";
 
 function AddMovie() {
   const navigate = useNavigate();
@@ -29,7 +30,7 @@ function AddMovie() {
     setError("");
     setLoading(true);
     try {
-      await axios.post("http://localhost:3000/api/movies", formData);
+      axios.post(`${API_URL}/api/movies`, formData);
       navigate("/home");
     } catch (error) {
       setLoading(false);

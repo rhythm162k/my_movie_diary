@@ -6,6 +6,7 @@ import LoadingSVG from "../../components/LoadingSVG";
 import GoogleBTN from "./GoogleBTN";
 import "./LoginPage.css";
 import "./Divider.css";
+import API_URL from "../../api";
 
 function LoginPage() {
   const [error, setError] = React.useState("");
@@ -31,7 +32,7 @@ function LoginPage() {
     setError("");
     setLoading(true);
     try {
-      await axios.post("http://localhost:3000/api/login", loginData);
+      await axios.post(`${API_URL}/api/login`, loginData);
       setAuthenticated(true);
       navigate("/home");
     } catch (error) {
@@ -99,7 +100,7 @@ function LoginPage() {
           type="button"
           class="social-btn google-material"
           onClick={() => {
-            window.location.href = "http://localhost:3000/auth/google";
+            window.location.href = `${API_URL}/auth/google`;
           }}
         >
           <GoogleBTN />

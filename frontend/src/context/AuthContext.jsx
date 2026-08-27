@@ -1,6 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useEffect, useState } from "react";
 import axios from "axios";
+import API_URL from "../api";
 
 const AuthContext = createContext();
 
@@ -11,7 +12,7 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const checkSession = async () => {
       try {
-        await axios.get("http://localhost:3000/api/session");
+        await axios.get(`${API_URL}/api/session`);
         setAuthenticated(true);
       } catch {
         setAuthenticated(false);
