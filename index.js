@@ -124,56 +124,29 @@ app.get(
   }),
 );
 
-app.get("/auth/google/callback", (req, res, next) => {
-  passport.authenticate("google", { session: false }, (err, user, info) => {
-    console.log("Passport callback:");
-    console.log("err:", err);
-    console.log("user:", user);
-    console.log("info:", info);
+app.get(
+  "/auth/google/callback",
+  passport.authenticate("google", {
+    failureRedirect: `${process.env.FRONTEND_URL || "http://localhost:5173"}/login`,
+    session: false,
+  }),
+  (req, res) => {
+    req.session.userId = req.user.userid;
 
-    if (err) {
-      return res.status(500).json({
-        message: "Passport error",
-        error: err.message,
-      });
-    }
-
-    if (!user) {
-      return res.status(401).json({
-        message: "Google authentication failed",
-        info,
-      });
-    }
-
-    req.logIn(user, { session: false }, (loginErr) => {
-      if (loginErr) {
-        console.error("Login error:", loginErr);
-        return res.status(500).json({
-          message: "Login failed",
-          error: loginErr.message,
-        });
+    req.session.save((err) => {
+      if (err) {
+        console.error("Session save error:", err);
+        return res.status(500).send("Session error");
       }
 
-      req.session.userId = user.userid;
+      console.log("Session saved:", req.session.userId);
 
-      req.session.save((sessionErr) => {
-        if (sessionErr) {
-          console.error("Session save error:", sessionErr);
-          return res.status(500).json({
-            message: "Session save failed",
-          });
-        }
-
-        console.log("Session saved:", req.session.userId);
-        console.log("Session cookie:", res.getHeader("Set-Cookie"));
-
-        res.redirect(
-          `${process.env.FRONTEND_URL || "http://localhost:5173"}/home`,
-        );
-      });
+      res.redirect(
+        `${process.env.FRONTEND_URL || "http://localhost:5173"}/home`,
+      );
     });
-  })(req, res, next);
-});
+  },
+);
 
 app.post("/api/logout", (req, res) => {
   req.session.destroy((error) => {
