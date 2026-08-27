@@ -133,7 +133,18 @@ app.get(
   (req, res) => {
     req.session.userId = req.user.userid;
 
-    res.redirect(`${process.env.FRONTEND_URL || "http://localhost:5173"}/home`);
+    req.session.save((err) => {
+      if (err) {
+        console.error("Session save error:", err);
+        return res.status(500).json({ message: "Session save failed." });
+      }
+
+      console.log("Session saved:", req.session.userId);
+
+      res.redirect(
+        `${process.env.FRONTEND_URL || "http://localhost:5173"}/home`,
+      );
+    });
   },
 );
 
