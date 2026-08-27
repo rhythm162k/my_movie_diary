@@ -5,6 +5,7 @@ import pg from "pg";
 import cors from "cors";
 import bcrypt from "bcrypt";
 import session from "express-session";
+import connectPgSimple from "connect-pg-simple";
 import passport from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 
@@ -38,12 +39,19 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(express.static("public"));
 
-console.log("NODE_ENV:", process.env.NODE_ENV);
-console.log("SESSION_SECRET exists:", !!process.env.SESSION_SECRET);
-console.log("FRONTEND_URL:", process.env.FRONTEND_URL);
+const PgSession = connectPgSimple(session);
 
 app.use(
   session({
+    store: new PgSession({
+      conObject: {
+        user: process.env.PG_USER,
+        host: process.env.PG_HOST,
+        database: process.env.PG_DATABASE,
+        password: process.env.PG_PASSWORD,
+        port: process.env.PG_PORT,
+      },
+    }),
     secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
@@ -135,12 +143,6 @@ app.get(
     session: false,
   }),
   (req, res) => {
-    // console.log("Session object:", req.session);
-    // console.log("Protocol:", req.protocol);
-    // console.log("Secure:", req.secure);
-    // console.log("X-Forwarded-Proto:", req.get("X-Forwarded-Proto"));
-    // console.log("Session ID:", req.sessionID);
-    // console.log("Session cookie:", req.session.cookie);
     req.session.userId = req.user.userid;
 
     req.session.save((err) => {
