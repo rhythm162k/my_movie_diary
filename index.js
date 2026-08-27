@@ -165,6 +165,7 @@ app.get("/auth/google/callback", (req, res, next) => {
         }
 
         console.log("Session saved:", req.session.userId);
+        console.log("Session cookie:", res.getHeader("Set-Cookie"));
 
         res.redirect(
           `${process.env.FRONTEND_URL || "http://localhost:5173"}/home`,
