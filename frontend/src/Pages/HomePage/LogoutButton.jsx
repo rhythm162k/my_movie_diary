@@ -11,7 +11,13 @@ function LogoutButton() {
 
   const handleLogout = async () => {
     try {
-      axios.post(`${API_URL}/api/logout`);
+      axios.post(
+        `${API_URL}/api/logout`,
+        {},
+        {
+          withCredentials: true,
+        },
+      );
       setAuthenticated(false);
       navigate("/login");
     } catch (error) {

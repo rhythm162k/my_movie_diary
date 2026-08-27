@@ -30,7 +30,9 @@ function AddMovie() {
     setError("");
     setLoading(true);
     try {
-      axios.post(`${API_URL}/api/movies`, formData);
+      await axios.post(`${API_URL}/api/movies`, formData, {
+        withCredentials: true,
+      });
       navigate("/home");
     } catch (error) {
       setLoading(false);

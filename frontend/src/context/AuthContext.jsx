@@ -12,7 +12,9 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const checkSession = async () => {
       try {
-        await axios.get(`${API_URL}/api/session`);
+        await axios.get(`${API_URL}/api/session`, {
+          withCredentials: true,
+        });
         setAuthenticated(true);
       } catch {
         setAuthenticated(false);

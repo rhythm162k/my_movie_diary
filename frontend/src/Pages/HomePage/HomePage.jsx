@@ -24,9 +24,10 @@ function HomePage() {
       const fetchSearchResults = async () => {
         try {
           const response = await axios.get(
-            `${API_URL}/api/movies/search?title=${encodeURIComponent(
-              searchQuery,
-            )}`,
+            `${API_URL}/api/movies/search?title=${encodeURIComponent(search)}`,
+            {
+              withCredentials: true,
+            },
           );
 
           setSearchResults(response.data);
@@ -39,7 +40,9 @@ function HomePage() {
     } else {
       const fetchMovieData = async () => {
         try {
-          const response = await axios.get(`${API_URL}/api/movies`);
+          const response = await axios.get(`${API_URL}/api/movies`, {
+            withCredentials: true,
+          });
 
           setMovies(response.data);
 
@@ -51,7 +54,7 @@ function HomePage() {
 
       fetchMovieData();
     }
-  }, [searchParams, deleted]);
+  }, [searchParams, deleted, search]);
 
   const displayedMovies = searchResults !== null ? searchResults : movies;
   const totalPages = Math.ceil(displayedMovies.length / moviesPerPage);
@@ -71,6 +74,7 @@ function HomePage() {
     try {
       await axios.delete(`${API_URL}/api/delete`, {
         params: { id: movieId },
+        withCredentials: true,
       });
       setDeleted(!deleted);
     } catch (err) {

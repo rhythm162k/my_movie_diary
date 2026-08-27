@@ -38,11 +38,17 @@ function RegistrationPage() {
       return;
     }
     try {
-      await axios.post(`${API_URL}/api/registration`, {
-        name: registrationData.name,
-        email: registrationData.email,
-        password: registrationData.password,
-      });
+      await axios.post(
+        `${API_URL}/api/registration`,
+        {
+          name: registrationData.name,
+          email: registrationData.email,
+          password: registrationData.password,
+        },
+        {
+          withCredentials: true,
+        },
+      );
       setAuthenticated(true);
       navigate("/home");
     } catch (error) {

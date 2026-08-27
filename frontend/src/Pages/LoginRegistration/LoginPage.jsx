@@ -32,7 +32,9 @@ function LoginPage() {
     setError("");
     setLoading(true);
     try {
-      await axios.post(`${API_URL}/api/login`, loginData);
+      await axios.post(`${API_URL}/api/login`, loginData, {
+        withCredentials: true,
+      });
       setAuthenticated(true);
       navigate("/home");
     } catch (error) {
