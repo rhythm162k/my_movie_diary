@@ -28,7 +28,7 @@ const apiKey = process.env.OMDB_API_KEY;
 
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: process.env.FRONTEND_URL || "http://localhost:5173",
     credentials: true,
   }),
 );
@@ -126,13 +126,13 @@ app.get(
 app.get(
   "/auth/google/callback",
   passport.authenticate("google", {
-    failureRedirect: "http://localhost:5173/login",
+    failureRedirect: `${process.env.FRONTEND_URL || "http://localhost:5173"}/login`,
     session: false,
   }),
   (req, res) => {
     req.session.userId = req.user.userid;
 
-    res.redirect("http://localhost:5173/home");
+    res.redirect(`${process.env.FRONTEND_URL || "http://localhost:5173"}/home`);
   },
 );
 
@@ -361,6 +361,6 @@ app.post("/api/login", async (req, res) => {
   }
 });
 
-app.listen(port, () => {
+app.listen(port, "0.0.0.0", () => {
   console.log(`Server running on port ${port}`);
 });
