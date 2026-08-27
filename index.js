@@ -135,6 +135,7 @@ app.get(
     session: false,
   }),
   (req, res) => {
+    console.log("Session object:", req.session);
     req.session.userId = req.user.userid;
 
     req.session.save((err) => {
