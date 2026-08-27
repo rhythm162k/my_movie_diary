@@ -135,12 +135,12 @@ app.get(
     session: false,
   }),
   (req, res) => {
-    console.log("Session object:", req.session);
-    console.log("Protocol:", req.protocol);
-    console.log("Secure:", req.secure);
-    console.log("X-Forwarded-Proto:", req.get("X-Forwarded-Proto"));
-    console.log("Session ID:", req.sessionID);
-    console.log("Session cookie:", req.session.cookie);
+    // console.log("Session object:", req.session);
+    // console.log("Protocol:", req.protocol);
+    // console.log("Secure:", req.secure);
+    // console.log("X-Forwarded-Proto:", req.get("X-Forwarded-Proto"));
+    // console.log("Session ID:", req.sessionID);
+    // console.log("Session cookie:", req.session.cookie);
     req.session.userId = req.user.userid;
 
     req.session.save((err) => {
@@ -150,12 +150,7 @@ app.get(
       }
 
       console.log("Session saved:", req.session.userId);
-      res.cookie("testCookie", "hello", {
-        httpOnly: true,
-        secure: true,
-        sameSite: "none",
-      });
-
+      console.log("Headers before redirect:", res.getHeaders());
       res.redirect(
         `${process.env.FRONTEND_URL || "http://localhost:5173"}/home`,
       );
