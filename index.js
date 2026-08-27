@@ -38,6 +38,10 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(express.static("public"));
 
+console.log("NODE_ENV:", process.env.NODE_ENV);
+console.log("SESSION_SECRET exists:", !!process.env.SESSION_SECRET);
+console.log("FRONTEND_URL:", process.env.FRONTEND_URL);
+
 app.use(
   session({
     secret: process.env.SESSION_SECRET,
