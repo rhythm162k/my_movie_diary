@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams, Link } from "react-router";
 import axios from "axios";
-import Pagination from "../../components/pagination";
+import Pagination from "../../components/Pagination";
 import MovieCard from "./MovieCard";
 import Header from "./Header";
 import "./HomePage.css";
