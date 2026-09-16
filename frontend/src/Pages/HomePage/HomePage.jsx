@@ -20,41 +20,32 @@ function HomePage() {
   useEffect(() => {
     const searchQuery = searchParams.get("search");
 
-    if (searchQuery) {
-      const fetchSearchResults = async () => {
-        try {
+    const fetchMovies = async () => {
+      try {
+        if (searchQuery) {
           const response = await axios.get(
-            `${API_URL}/api/movies/search?title=${encodeURIComponent(search)}`,
+            `${API_URL}/api/movies/search?title=${encodeURIComponent(searchQuery)}`,
             {
               withCredentials: true,
             },
           );
 
           setSearchResults(response.data);
-        } catch (error) {
-          console.error("Failed to fetch search results:", error);
-        }
-      };
-
-      fetchSearchResults();
-    } else {
-      const fetchMovieData = async () => {
-        try {
+        } else {
           const response = await axios.get(`${API_URL}/api/movies`, {
             withCredentials: true,
           });
 
           setMovies(response.data);
-
           setSearchResults(null);
-        } catch (error) {
-          console.error("Failed to fetch movies:", error);
         }
-      };
+      } catch (error) {
+        console.error("Failed to fetch movies:", error);
+      }
+    };
 
-      fetchMovieData();
-    }
-  }, [searchParams, deleted, search]);
+    fetchMovies();
+  }, [searchParams, deleted]);
 
   const displayedMovies = searchResults !== null ? searchResults : movies;
   const totalPages = Math.ceil(displayedMovies.length / moviesPerPage);
