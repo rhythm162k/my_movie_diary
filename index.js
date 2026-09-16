@@ -136,20 +136,50 @@ app.get(
   }),
 );
 
+// app.get(
+//   "/auth/google/callback",
+//   passport.authenticate("google", {
+//     failureRedirect: `${process.env.FRONTEND_URL || "http://localhost:5173"}/login`,
+//     session: false,
+//   }),
+//   (req, res) => {
+//     req.session.userId = req.user.userid;
+
+//     req.session.save((err) => {
+//       if (err) {
+//         console.error("Session save error:", err);
+//         return res.status(500).send("Session error");
+//       }
+
+//       res.redirect(
+//         `${process.env.FRONTEND_URL || "http://localhost:5173"}/home`,
+//       );
+//     });
+//   },
+// );
+
 app.get(
   "/auth/google/callback",
+  (req, res, next) => {
+    console.log("GOOGLE CALLBACK REACHED");
+    next();
+  },
   passport.authenticate("google", {
     failureRedirect: `${process.env.FRONTEND_URL || "http://localhost:5173"}/login`,
     session: false,
   }),
   (req, res) => {
+    console.log("PASSPORT SUCCESS:", req.user);
+
     req.session.userId = req.user.userid;
 
     req.session.save((err) => {
       if (err) {
-        console.error("Session save error:", err);
+        console.error("SESSION SAVE ERROR:", err);
         return res.status(500).send("Session error");
       }
+
+      console.log("SESSION SAVED:", req.session.userId);
 
       res.redirect(
         `${process.env.FRONTEND_URL || "http://localhost:5173"}/home`,
