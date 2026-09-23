@@ -110,7 +110,7 @@ function HomePage() {
 
       <div className="main-body">
         {loading ? (
-          Array(3)
+          Array(6)
             .fill()
             .map((_, index) => <SkeletonLoad key={index} />)
         ) : paginatedMovies.length === 0 ? (
