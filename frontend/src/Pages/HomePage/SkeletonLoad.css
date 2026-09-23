@@ -35,7 +35,7 @@
   display: grid;
   grid-template-columns: 1fr;
   gap: 1rem;
-  align-items: start;
+  justify-content: start;
   min-width: 0;
 }
 
@@ -110,7 +110,7 @@
   }
 
   .skeleton-title-rate {
-    align-items: center;
+    justify-content: center;
     min-width: 0;
   }
 
