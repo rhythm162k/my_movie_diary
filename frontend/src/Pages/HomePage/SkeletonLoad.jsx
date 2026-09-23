@@ -12,7 +12,7 @@ export default function SkeletonLoad() {
       </div>
 
       <div className="skeleton-description">
-        <div className="skeleton-description-text"></div>
+        <div className="skeleton-description-box"></div>
       </div>
     </div>
   );

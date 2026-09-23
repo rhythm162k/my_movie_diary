@@ -64,7 +64,7 @@
   border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.skeleton-description-text {
+.skeleton-description-box {
   border-radius: 6px;
   background: #d9d9d949;
   margin: 0;
@@ -75,7 +75,7 @@
 
 .title::before,
 .rating::before,
-.skeleton-description-text::before,
+.skeleton-description-box::before,
 .skeleton-movie-img::before {
   content: "";
   position: absolute;
@@ -102,7 +102,7 @@
   .skeleton-movie-poster-description {
     grid-template-columns: 1fr;
     justify-items: center;
-    text-align: center;
+    align-items: center;
     gap: 1rem;
   }
 
