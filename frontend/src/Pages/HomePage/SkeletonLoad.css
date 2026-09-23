@@ -43,7 +43,7 @@
   background: #d9d9d949;
   margin: 0.25rem 0 0.5rem;
   height: 3rem;
-  width: 100%;
+  width: 80%;
   border-radius: 6px;
   position: relative;
   overflow: hidden;
@@ -54,7 +54,7 @@
   background: #d9d9d949;
   margin: 0;
   height: 1.85rem;
-  width: 50%;
+  width: 30%;
   opacity: 0.75;
   position: relative;
   overflow: hidden;
