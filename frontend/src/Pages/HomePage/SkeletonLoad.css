@@ -101,9 +101,8 @@
 @media (max-width: 960px) {
   .skeleton-movie-poster-description {
     grid-template-columns: 1fr;
-    justify-items: center;
-    align-items: center;
     gap: 1rem;
+    place-items: center;
   }
 
   .skeleton-movie-img {
