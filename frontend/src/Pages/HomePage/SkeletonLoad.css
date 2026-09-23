@@ -33,7 +33,7 @@
 
 .skeleton-title-rate {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  /* grid-template-columns: 1fr; */
   gap: 1rem;
   align-items: start;
   min-width: 0;
