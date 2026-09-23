@@ -4,6 +4,7 @@ import axios from "axios";
 import Pagination from "../../components/Pagination";
 import MovieCard from "./MovieCard";
 import Header from "./Header";
+import SkeletonLoad from "./SkeletonLoad";
 import "./HomePage.css";
 import API_URL from "../../api";
 
@@ -14,6 +15,7 @@ function HomePage() {
   const [search, setSearch] = useState(() => searchParams.get("search") || "");
   const [currentPage, setCurrentPage] = useState(1);
   const [deleted, setDeleted] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const moviesPerPage = 10;
 
@@ -21,6 +23,7 @@ function HomePage() {
     const searchQuery = searchParams.get("search");
 
     const fetchMovies = async () => {
+      setLoading(true);
       try {
         if (searchQuery) {
           const response = await axios.get(
@@ -41,6 +44,8 @@ function HomePage() {
         }
       } catch (error) {
         console.error("Failed to fetch movies:", error);
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -104,7 +109,11 @@ function HomePage() {
       </div>
 
       <div className="main-body">
-        {paginatedMovies.length === 0 ? (
+        {loading ? (
+          Array(3)
+            .fill()
+            .map((_, index) => <SkeletonLoad key={index} />)
+        ) : paginatedMovies.length === 0 ? (
           searchResults !== null ? (
             <div className="nothing-there">
               <img src="/not-found.png" />
@@ -116,7 +125,11 @@ function HomePage() {
           )
         ) : (
           paginatedMovies.map((movie) => (
-            <MovieCard movie={movie} handleDelete={handleDelete} />
+            <MovieCard
+              key={movie.id}
+              movie={movie}
+              handleDelete={handleDelete}
+            />
           ))
         )}
       </div>

@@ -1,0 +1,97 @@
+.skeleton-movie {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  padding: 1rem;
+  background-color: var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
+}
+
+/* ---------- Poster + Title ---------- */
+
+.skeleton-movie-poster-description {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 1rem;
+  align-items: start;
+}
+
+.skeleton-movie-img {
+  background: #d9d9d949;
+  width: 120px;
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+  display: block;
+  border-radius: 8px;
+  position: relative;
+  overflow: hidden;
+}
+
+.skeleton-title-rate {
+  min-width: 0;
+}
+
+.title {
+  background: #d9d9d949;
+  margin: 0.25rem 0 0.5rem;
+  height: 3rem;
+  border-radius: 6px;
+  position: relative;
+  overflow: hidden;
+}
+
+.rating {
+  border-radius: 6px;
+  background: #d9d9d949;
+  margin: 0;
+  height: 1.85rem;
+  opacity: 0.75;
+  position: relative;
+  overflow: hidden;
+}
+
+/* ---------- Description ---------- */
+
+.skeleton-description {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.skeleton-description-text {
+  border-radius: 6px;
+  background: #d9d9d949;
+  margin: 0;
+  height: 50px;
+  position: relative;
+  overflow: hidden;
+}
+
+.title::before,
+.rating::before,
+.skeleton-description-text::before,
+.skeleton-movie-img::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.08) 50%,
+    transparent 100%
+  );
+
+  transform: translateX(-100%);
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}

@@ -1,4 +1,5 @@
 import DeleteIcon from "@mui/icons-material/Delete";
+import "./MovieCard.css";
 export default function MovieCard({ movie, handleDelete }) {
   return (
     <div className="movie" key={movie.id}>

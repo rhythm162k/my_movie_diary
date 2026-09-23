@@ -133,13 +133,13 @@ function RegistrationPage() {
           </button>
         </form>
 
-        <div class="divider">
+        <div className="divider">
           <span>or</span>
         </div>
 
         <button
           type="button"
-          class="social-btn google-material"
+          className="social-btn google-material"
           onClick={() => {
             window.location.href = `${API_URL}/auth/google`;
           }}

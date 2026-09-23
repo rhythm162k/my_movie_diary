@@ -2,7 +2,7 @@ import "./GoogleBTN.css";
 
 export default function GoogleBTN() {
   return (
-    <div class="social-icon google-icon">
+    <div className="social-icon google-icon">
       <svg viewBox="0 0 24 24">
         <path
           fill="#4285F4"
