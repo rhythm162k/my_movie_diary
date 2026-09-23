@@ -106,11 +106,11 @@
   .skeleton-movie-poster-description {
     grid-template-columns: 1fr;
     gap: 1rem;
-    place-items: center;
+    justify-items: center;
   }
 
   .skeleton-title-rate {
-    justify-content: center;
+    justify-items: center;
     min-width: 0;
   }
 

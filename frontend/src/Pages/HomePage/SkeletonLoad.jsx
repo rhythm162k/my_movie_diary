@@ -2,7 +2,7 @@ import "./SkeletonLoad.css";
 export default function SkeletonLoad() {
   return (
     <div className="skeleton-movie">
-      <div className="movie-poster-description">
+      <div className="skeleton-movie-poster-description">
         <div className="skeleton-movie-img"></div>
 
         <div className="skeleton-title-rate">
