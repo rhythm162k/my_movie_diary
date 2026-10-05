@@ -68,56 +68,58 @@ app.use(
 
 app.use(passport.initialize());
 
-passport.use(
-  new GoogleStrategy(
-    {
-      clientID: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: process.env.GOOGLE_CALLBACK_URL,
-    },
+if (process.env.NODE_ENV !== "test") {
+  passport.use(
+    new GoogleStrategy(
+      {
+        clientID: process.env.GOOGLE_CLIENT_ID,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+        callbackURL: process.env.GOOGLE_CALLBACK_URL,
+      },
 
-    async (accessToken, refreshToken, profile, done) => {
-      try {
-        const googleId = profile.id;
-        const email = profile.emails[0].value;
-        const name = profile.displayName;
+      async (accessToken, refreshToken, profile, done) => {
+        try {
+          const googleId = profile.id;
+          const email = profile.emails[0].value;
+          const name = profile.displayName;
 
-        // Check whether this Google account already exists
-        const existingGoogleUser = await db.query(
-          "SELECT userid FROM users WHERE googleid = $1",
-          [googleId],
-        );
+          // Check whether this Google account already exists
+          const existingGoogleUser = await db.query(
+            "SELECT userid FROM users WHERE googleid = $1",
+            [googleId],
+          );
 
-        if (existingGoogleUser.rows.length > 0) {
-          return done(null, existingGoogleUser.rows[0]);
-        }
+          if (existingGoogleUser.rows.length > 0) {
+            return done(null, existingGoogleUser.rows[0]);
+          }
 
-        // Check whether this email already belongs to an account
-        const existingEmailUser = await db.query(
-          "SELECT userid FROM users WHERE email = $1",
-          [email],
-        );
+          // Check whether this email already belongs to an account
+          const existingEmailUser = await db.query(
+            "SELECT userid FROM users WHERE email = $1",
+            [email],
+          );
 
-        if (existingEmailUser.rows.length > 0) {
-          return done(null, existingEmailUser.rows[0]);
-        }
+          if (existingEmailUser.rows.length > 0) {
+            return done(null, existingEmailUser.rows[0]);
+          }
 
-        // No existing account, so create one
-        const result = await db.query(
-          `INSERT INTO users (name, email, googleid)
+          // No existing account, so create one
+          const result = await db.query(
+            `INSERT INTO users (name, email, googleid)
            VALUES ($1, $2, $3)
            RETURNING userid`,
-          [name, email, googleId],
-        );
+            [name, email, googleId],
+          );
 
-        return done(null, result.rows[0]);
-      } catch (error) {
-        console.error("Google authentication error:", error);
-        return done(error, null);
-      }
-    },
-  ),
-);
+          return done(null, result.rows[0]);
+        } catch (error) {
+          console.error("Google authentication error:", error);
+          return done(error, null);
+        }
+      },
+    ),
+  );
+}
 
 app.get("/api/session", (req, res) => {
   if (!req.session.userId) {
@@ -138,32 +140,10 @@ app.get(
   }),
 );
 
-// app.get(
-//   "/auth/google/callback",
-//   passport.authenticate("google", {
-//     failureRedirect: `${process.env.FRONTEND_URL || "http://localhost:5173"}/login`,
-//     session: false,
-//   }),
-//   (req, res) => {
-//     req.session.userId = req.user.userid;
-
-//     req.session.save((err) => {
-//       if (err) {
-//         console.error("Session save error:", err);
-//         return res.status(500).send("Session error");
-//       }
-
-//       res.redirect(
-//         `${process.env.FRONTEND_URL || "http://localhost:5173"}/home`,
-//       );
-//     });
-//   },
-// );
-
 app.get(
   "/auth/google/callback",
   (req, res, next) => {
-    console.log("GOOGLE CALLBACK REACHED");
+    // console.log("GOOGLE CALLBACK REACHED");
     next();
   },
   passport.authenticate("google", {
@@ -171,7 +151,7 @@ app.get(
     session: false,
   }),
   (req, res) => {
-    console.log("PASSPORT SUCCESS:", req.user);
+    // console.log("PASSPORT SUCCESS:", req.user);
 
     req.session.userId = req.user.userid;
 
@@ -181,7 +161,7 @@ app.get(
         return res.status(500).send("Session error");
       }
 
-      console.log("SESSION SAVED:", req.session.userId);
+      // console.log("SESSION SAVED:", req.session.userId);
 
       res.redirect(
         `${process.env.FRONTEND_URL || "http://localhost:5173"}/home`,
@@ -415,6 +395,10 @@ app.post("/api/login", async (req, res) => {
   }
 });
 
-app.listen(port, "0.0.0.0", () => {
-  console.log(`Server running on port ${port}`);
-});
+if (process.env.NODE_ENV !== "test") {
+  app.listen(port, "0.0.0.0", () => {
+    console.log(`Server running on port ${port}`);
+  });
+}
+
+export default app;
