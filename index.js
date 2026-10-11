@@ -7,6 +7,7 @@ import bcrypt from "bcrypt";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import passport from "passport";
+import { body, validationResult } from "express-validator";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 
 dotenv.config({
@@ -220,14 +221,18 @@ app.post("/api/movies", async (req, res) => {
 
   const { title, description, rating } = req.body;
 
-  const existingMovie = await db.query(
-    "SELECT id FROM movies WHERE userid = $1 AND lower(title) = lower($2)",
-    [req.session.userId, title],
-  );
-
-  if (existingMovie.rows.length > 0) {
-    return res.status(409).json({
-      message: "You Already Added the Movie :)",
+  if (
+    !title.trim() ||
+    !description.trim() ||
+    rating === undefined ||
+    rating === null ||
+    rating === "" ||
+    !Number.isFinite(Number(rating)) ||
+    Number(rating) < 0 ||
+    Number(rating) > 10
+  ) {
+    return res.status(400).json({
+      message: "invalid input",
     });
   }
 
@@ -264,9 +269,15 @@ app.post("/api/movies", async (req, res) => {
       message: "Movie added successfully.",
     });
   } catch (error) {
-    console.error(error);
+    if (error.code === "23505") {
+      return res.status(409).json({
+        message: "You already added this movie.",
+      });
+    }
 
-    res.status(500).json({
+    console.error("Failed to add movie:", error);
+
+    return res.status(500).json({
       message: "Something went wrong.",
     });
   }
@@ -280,6 +291,12 @@ app.get("/api/movies/search", async (req, res) => {
   }
 
   const { title } = req.query;
+
+  if (!title.trim()) {
+    return res.status(400).json({
+      message: "invalid input",
+    });
+  }
 
   try {
     const result = await db.query(
@@ -318,43 +335,62 @@ app.delete("/api/delete", async (req, res) => {
   }
 });
 
-app.post("/api/registration", async (req, res) => {
-  const { name, email, password } = req.body;
-
-  try {
-    const existingUser = await db.query(
-      "SELECT userid FROM users WHERE email = $1",
-      [email],
-    );
-
-    if (existingUser.rows.length > 0) {
-      return res.status(409).json({
-        message: "A user with this email already exists. So just Login ;)",
+app.post(
+  "/api/registration",
+  [
+    body("name").trim().notEmpty().withMessage("Name is required."),
+    body("email")
+      .isEmail()
+      .withMessage("Please provide a valid email address.")
+      .normalizeEmail(),
+    body("password")
+      .isLength({ min: 6 })
+      .withMessage("Password must be at least 6 characters long."),
+  ],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        message: errors.array()[0].msg,
       });
     }
+    const { name, email, password } = req.body;
 
-    const hash = await bcrypt.hash(password, saltRounds);
+    try {
+      const existingUser = await db.query(
+        "SELECT userid FROM users WHERE email = $1",
+        [email],
+      );
 
-    const result = await db.query(
-      `INSERT INTO users (name, email, password)
+      if (existingUser.rows.length > 0) {
+        return res.status(409).json({
+          message: "A user with this email already exists. So just Login ;)",
+        });
+      }
+
+      const hash = await bcrypt.hash(password, saltRounds);
+
+      const result = await db.query(
+        `INSERT INTO users (name, email, password)
        VALUES ($1, $2, $3)
        RETURNING userid`,
-      [name, email, hash],
-    );
+        [name, email, hash],
+      );
 
-    req.session.userId = result.rows[0].userid;
+      req.session.userId = result.rows[0].userid;
 
-    res.status(201).json({
-      message: "User registered successfully.",
-    });
-  } catch (error) {
-    console.error(error);
+      res.status(201).json({
+        message: "User registered successfully.",
+      });
+    } catch (error) {
+      console.error(error);
 
-    res.status(500).json({
-      message: "Something went wrong.",
-    });
-  }
-});
+      res.status(500).json({
+        message: "Something went wrong.",
+      });
+    }
+  },
+);
 
 app.post("/api/login", async (req, res) => {
   const { email, password } = req.body;

@@ -53,11 +53,7 @@ function RegistrationPage() {
       navigate("/home");
     } catch (error) {
       setLoading(false);
-      if (error.response?.status === 409) {
-        setError(error.response.data.message);
-      } else {
-        setError("Something went wrong. Please try again.");
-      }
+      setError(error.response.data.message);
     }
   };
 
