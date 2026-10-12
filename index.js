@@ -7,7 +7,7 @@ import bcrypt from "bcrypt";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import passport from "passport";
-import { body, validationResult } from "express-validator";
+import { body, query, validationResult } from "express-validator";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 
 dotenv.config({
@@ -212,128 +212,157 @@ app.get("/api/movies", async (req, res) => {
   }
 });
 
-app.post("/api/movies", async (req, res) => {
-  if (!req.session.userId) {
-    return res.status(401).json({
-      message: "Not authenticated.",
-    });
-  }
-
-  const { title, description, rating } = req.body;
-
-  if (
-    !title.trim() ||
-    !description.trim() ||
-    rating === undefined ||
-    rating === null ||
-    rating === "" ||
-    !Number.isFinite(Number(rating)) ||
-    Number(rating) < 0 ||
-    Number(rating) > 10
-  ) {
-    return res.status(400).json({
-      message: "invalid input",
-    });
-  }
-
-  const fallbackPoster =
-    "https://cdn.displate.com/artwork/735x1024/2022-04-15/7422bfe15b3ea7b5933dffd896e9c7f9_46003a1b7353dc7b5a02949bd074432a.jpg";
-
-  let poster = fallbackPoster;
-
-  try {
-    const response = await fetch(
-      `https://www.omdbapi.com/?apikey=${apiKey}&t=${encodeURIComponent(title)}`,
-    );
-
-    if (response.ok) {
-      const data = await response.json();
-
-      if (data.Response === "True" && data.Poster && data.Poster !== "N/A") {
-        poster = data.Poster;
+app.post(
+  "/api/movies",
+  [
+    body("title").trim().notEmpty().withMessage("Title is required."),
+    body("description")
+      .trim()
+      .notEmpty()
+      .withMessage("Description is required."),
+    body("rating").custom((rating) => {
+      if (
+        rating === undefined ||
+        rating === null ||
+        rating === "" ||
+        !Number.isFinite(Number(rating)) ||
+        Number(rating) < 0 ||
+        Number(rating) > 10
+      ) {
+        throw new Error("Rating is required with a number between 0 and 10.");
       }
-    }
-  } catch (error) {
-    console.error("OMDb fetch failed:", error);
-  }
 
-  try {
-    await db.query(
-      `INSERT INTO movies
-       (title, rating, description, imgsrc, userid)
-       VALUES ($1, $2, $3, $4, $5)`,
-      [title, rating, description, poster, req.session.userId],
-    );
-
-    res.status(201).json({
-      message: "Movie added successfully.",
-    });
-  } catch (error) {
-    if (error.code === "23505") {
-      return res.status(409).json({
-        message: "You already added this movie.",
+      return true;
+    }),
+  ],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        message: errors.array()[0].msg,
       });
     }
 
-    console.error("Failed to add movie:", error);
+    if (!req.session.userId) {
+      return res.status(401).json({
+        message: "Not authenticated.",
+      });
+    }
 
-    return res.status(500).json({
-      message: "Something went wrong.",
-    });
-  }
-});
+    const { title, description, rating } = req.body;
 
-app.get("/api/movies/search", async (req, res) => {
-  if (!req.session.userId) {
-    return res.status(401).json({
-      message: "Not authenticated.",
-    });
-  }
+    const fallbackPoster =
+      "https://cdn.displate.com/artwork/735x1024/2022-04-15/7422bfe15b3ea7b5933dffd896e9c7f9_46003a1b7353dc7b5a02949bd074432a.jpg";
 
-  const { title } = req.query;
+    let poster = fallbackPoster;
 
-  if (!title.trim()) {
-    return res.status(400).json({
-      message: "invalid input",
-    });
-  }
+    try {
+      const response = await fetch(
+        `https://www.omdbapi.com/?apikey=${apiKey}&t=${encodeURIComponent(title)}`,
+      );
 
-  try {
-    const result = await db.query(
-      `SELECT * FROM movies
+      if (response.ok) {
+        const data = await response.json();
+
+        if (data.Response === "True" && data.Poster && data.Poster !== "N/A") {
+          poster = data.Poster;
+        }
+      }
+    } catch (error) {
+      console.error("OMDb fetch failed:", error);
+    }
+
+    try {
+      await db.query(
+        `INSERT INTO movies
+       (title, rating, description, imgsrc, userid)
+       VALUES ($1, $2, $3, $4, $5)`,
+        [title, rating, description, poster, req.session.userId],
+      );
+
+      res.status(201).json({
+        message: "Movie added successfully.",
+      });
+    } catch (error) {
+      if (error.code === "23505") {
+        return res.status(409).json({
+          message: "You already added this movie.",
+        });
+      }
+
+      console.error("Failed to add movie:", error);
+
+      return res.status(500).json({
+        message: "Something went wrong.",
+      });
+    }
+  },
+);
+
+app.get(
+  "/api/movies/search",
+  [query("title").trim().notEmpty().withMessage("Title is required")],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        message: errors.array()[0].msg,
+      });
+    }
+
+    if (!req.session.userId) {
+      return res.status(401).json({
+        message: "Not authenticated.",
+      });
+    }
+
+    const { title } = req.query;
+
+    try {
+      const result = await db.query(
+        `SELECT * FROM movies
        WHERE userid = $1
        AND LOWER(title) LIKE LOWER('%' || $2 || '%')
        ORDER BY id DESC`,
-      [req.session.userId, title.trim()],
-    );
+        [req.session.userId, title.trim()],
+      );
 
-    res.json(result.rows);
-  } catch (error) {
-    console.error(error);
+      res.json(result.rows);
+    } catch (error) {
+      console.error(error);
 
-    res.status(500).json({
-      message: "Something went wrong.",
-    });
-  }
-});
-
-app.delete("/api/delete", async (req, res) => {
-  try {
-    const { id } = req.query;
-
-    if (!id) {
-      return res
-        .status(400)
-        .json({ error: "There's some problem deleting this movie." });
+      res.status(500).json({
+        message: "Something went wrong.",
+      });
     }
-    await db.query("DELETE FROM movies WHERE id = $1", [id]);
+  },
+);
 
-    return res.status(200).json({ message: "Movie deleted successfully" });
-  } catch (error) {
-    console.error("Delete failed:", error);
-    return res.status(500).json({ error: "Internal Server Error" });
-  }
-});
+app.delete(
+  "/api/delete",
+  [
+    query("id")
+      .notEmpty()
+      .withMessage("There's some problem deleting this movie."),
+  ],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          message: errors.array()[0].msg,
+        });
+      }
+      const { id } = req.query;
+      await db.query("DELETE FROM movies WHERE id = $1", [id]);
+
+      return res.status(200).json({ message: "Movie deleted successfully" });
+    } catch (error) {
+      console.error("Delete failed:", error);
+      return res.status(500).json({ error: "Internal Server Error" });
+    }
+  },
+);
 
 app.post(
   "/api/registration",
@@ -392,44 +421,64 @@ app.post(
   },
 );
 
-app.post("/api/login", async (req, res) => {
-  const { email, password } = req.body;
-
-  try {
-    const result = await db.query(
-      "SELECT userid, password FROM users WHERE email = $1",
-      [email],
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({
-        message: "User with this email doesn't exist.",
+app.post(
+  "/api/login",
+  [
+    body("email")
+      .notEmpty()
+      .isEmail()
+      .withMessage("Please provide a valid email address.")
+      .normalizeEmail(),
+    body("password")
+      .notEmpty()
+      .isLength({ min: 6 })
+      .withMessage("Envalid Password."),
+  ],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        message: errors.array()[0].msg,
       });
     }
+    const { email, password } = req.body;
 
-    const user = result.rows[0];
+    try {
+      const result = await db.query(
+        "SELECT userid, password FROM users WHERE email = $1",
+        [email],
+      );
 
-    const isPasswordCorrect = await bcrypt.compare(password, user.password);
+      if (result.rows.length === 0) {
+        return res.status(404).json({
+          message: "User with this email doesn't exist.",
+        });
+      }
 
-    if (!isPasswordCorrect) {
-      return res.status(403).json({
-        message: "Incorrect password.",
+      const user = result.rows[0];
+
+      const isPasswordCorrect = await bcrypt.compare(password, user.password);
+
+      if (!isPasswordCorrect) {
+        return res.status(403).json({
+          message: "Incorrect password.",
+        });
+      }
+
+      req.session.userId = user.userid;
+
+      res.status(200).json({
+        message: "User login successful.",
+      });
+    } catch (error) {
+      console.error(error);
+
+      res.status(500).json({
+        message: "Something went wrong.",
       });
     }
-
-    req.session.userId = user.userid;
-
-    res.status(200).json({
-      message: "User login successful.",
-    });
-  } catch (error) {
-    console.error(error);
-
-    res.status(500).json({
-      message: "Something went wrong.",
-    });
-  }
-});
+  },
+);
 
 if (process.env.NODE_ENV !== "test") {
   app.listen(port, "0.0.0.0", () => {

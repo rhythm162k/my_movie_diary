@@ -39,13 +39,7 @@ function LoginPage() {
       navigate("/home");
     } catch (error) {
       setLoading(false);
-      if (error.response?.status === 403) {
-        setError(error.response.data.message);
-      } else if (error.response?.status === 404) {
-        setError(error.response.data.message);
-      } else {
-        setError("Something went wrong. Please try again.");
-      }
+      setError(error.response.data.message);
     }
   };
   return (
