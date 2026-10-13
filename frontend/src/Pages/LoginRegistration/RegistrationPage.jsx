@@ -35,6 +35,7 @@ function RegistrationPage() {
     setLoading(true);
     if (registrationData.password !== registrationData.confirmPassword) {
       setError("Password didn't match");
+      setLoading(false);
       return;
     }
     try {
@@ -53,7 +54,7 @@ function RegistrationPage() {
       navigate("/home");
     } catch (error) {
       setLoading(false);
-      setError(error.response.data.message);
+      setError(error.response?.data?.message || "Registration failed");
     }
   };
 
