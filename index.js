@@ -30,6 +30,10 @@ const db = new pg.Client({
 db.connect();
 
 const apiKey = process.env.OMDB_API_KEY;
+const fallbackPoster =
+  "https://cdn.displate.com/artwork/735x1024/2022-04-15/7422bfe15b3ea7b5933dffd896e9c7f9_46003a1b7353dc7b5a02949bd074432a.jpg";
+
+let poster = fallbackPoster;
 
 app.use(
   cors({
@@ -84,7 +88,6 @@ if (process.env.NODE_ENV !== "test") {
           const email = profile.emails[0].value;
           const name = profile.displayName;
 
-          // Check whether this Google account already exists
           const existingGoogleUser = await db.query(
             "SELECT userid FROM users WHERE googleid = $1",
             [googleId],
@@ -94,7 +97,6 @@ if (process.env.NODE_ENV !== "test") {
             return done(null, existingGoogleUser.rows[0]);
           }
 
-          // Check whether this email already belongs to an account
           const existingEmailUser = await db.query(
             "SELECT userid FROM users WHERE email = $1",
             [email],
@@ -104,7 +106,6 @@ if (process.env.NODE_ENV !== "test") {
             return done(null, existingEmailUser.rows[0]);
           }
 
-          // No existing account, so create one
           const result = await db.query(
             `INSERT INTO users (name, email, googleid)
            VALUES ($1, $2, $3)
@@ -251,11 +252,6 @@ app.post(
 
     const { title, description, rating } = req.body;
 
-    const fallbackPoster =
-      "https://cdn.displate.com/artwork/735x1024/2022-04-15/7422bfe15b3ea7b5933dffd896e9c7f9_46003a1b7353dc7b5a02949bd074432a.jpg";
-
-    let poster = fallbackPoster;
-
     try {
       const response = await fetch(
         `https://www.omdbapi.com/?apikey=${apiKey}&t=${encodeURIComponent(title)}`,
@@ -337,6 +333,107 @@ app.get(
     }
   },
 );
+
+app.patch("/api/movies/edit", async (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({
+      message: "Not authenticated.",
+    });
+  }
+
+  const { id } = req.query;
+  const updates = req.body;
+
+  const keys = Object.keys(updates);
+
+  if (keys.length === 0) {
+    return res.status(400).json({ message: "No fields provided for update" });
+  }
+
+  if (
+    "title" in updates &&
+    (!updates.title || String(updates.title).trim() === "")
+  ) {
+    return res.status(400).json({ message: "Title cannot be empty." });
+  }
+
+  if (
+    "description" in updates &&
+    (!updates.description || String(updates.description).trim() === "")
+  ) {
+    return res.status(400).json({ message: "Description cannot be empty." });
+  }
+
+  if ("rating" in updates) {
+    const ratingNum = Number(updates.rating);
+    if (updates.rating === "" || updates.rating === null || isNaN(ratingNum)) {
+      return res
+        .status(400)
+        .json({ message: "Rating must be a valid number." });
+    }
+
+    if (ratingNum < 0 || ratingNum > 10) {
+      return res
+        .status(400)
+        .json({ message: "Rating must be between 0 and 10." });
+    }
+  }
+
+  try {
+    if ("title" in updates) {
+      try {
+        const omdbResponse = await fetch(
+          `https://www.omdbapi.com/?apikey=${apiKey}&t=${encodeURIComponent(updates.title)}`,
+        );
+
+        if (omdbResponse.ok) {
+          const data = await omdbResponse.json();
+          if (
+            data.Response === "True" &&
+            data.Poster &&
+            data.Poster !== "N/A"
+          ) {
+            poster = data.Poster;
+          }
+        }
+        updates.imgsrc = poster;
+        keys.push("imgsrc");
+      } catch (omdbError) {
+        console.error(
+          "Failed to fetch from OMDB, continuing with regular update:",
+          omdbError,
+        );
+      }
+    }
+
+    const setClause = keys
+      .map((key, index) => `${key} = $${index + 1}`)
+      .join(", ");
+
+    const values = Object.values(updates);
+    values.push(id);
+
+    const query = `UPDATE movies SET ${setClause} WHERE id = $${values.length}`;
+
+    await db.query(query, values);
+
+    res.status(200).json({
+      message: "Movie updated successfully.",
+    });
+  } catch (error) {
+    console.error("Failed to update movie:", error);
+
+    if (error.code === "23505") {
+      return res.status(409).json({
+        message: "A conflict occurred.",
+      });
+    }
+
+    return res.status(500).json({
+      message: "Something went wrong.",
+    });
+  }
+});
 
 app.delete(
   "/api/delete",

@@ -1,21 +1,21 @@
 .movie {
   display: grid;
   grid-template-rows: auto 1fr auto;
-  padding: 1rem;
-  background-color: var(--border);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 12px;
-  overflow: hidden;
   transition:
     transform 0.2s ease,
     box-shadow 0.2s ease,
     border-color 0.2s ease;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  background-color: var(--border);
+  padding: 1rem;
+  overflow: hidden;
 }
 
 .movie:hover {
   transform: translateY(-3px);
-  border-color: rgba(255, 255, 255, 0.14);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  border-color: rgba(255, 255, 255, 0.14);
 }
 
 /* ---------- Poster + Title ---------- */
@@ -23,16 +23,16 @@
 .movie-poster-description {
   display: grid;
   grid-template-columns: 120px 1fr;
-  gap: 1rem;
   align-items: start;
+  gap: 1rem;
 }
 
 .movie-img img {
-  width: 120px;
-  aspect-ratio: 2 / 3;
-  object-fit: cover;
   display: block;
   border-radius: 8px;
+  aspect-ratio: 2 / 3;
+  width: 120px;
+  object-fit: cover;
 }
 
 .title-rate {
@@ -46,59 +46,94 @@
 }
 
 .title-rate h5 {
-  margin: 0;
-  font-size: 0.85rem;
-  font-weight: 500;
   opacity: 0.75;
+  margin: 0;
+  font-weight: 500;
+  font-size: 0.85rem;
 }
 
 /* ---------- Description ---------- */
 
 .description {
   margin-top: 1rem;
-  padding-top: 1rem;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 1rem;
 }
 
 .description h3 {
   margin: 0 0 0.5rem;
-  font-size: 0.9rem;
   font-weight: 600;
+  font-size: 0.9rem;
 }
 
 .description p {
-  margin: 0;
-  line-height: 1.5;
-  font-size: 0.9rem;
   opacity: 0.8;
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
 }
 
-/* ---------- Delete Button ---------- */
+/* ------------ Buttons ------------ */
 
-.delete-btn {
-  justify-self: end;
-  align-self: end;
-  margin-top: 1rem;
-  padding: 0.35rem;
+.buttons {
   display: flex;
-  align-items: center;
+  justify-content: flex-end;
+}
+
+/* ---------- Edit Button ---------- */
+
+.edit-btn {
+  display: flex;
   justify-content: center;
-  color: var(--text);
-  background: transparent;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
+  align-items: center;
+  align-self: end;
+  justify-self: end;
   opacity: 0.55;
   transition:
     color 0.2s ease,
     opacity 0.2s ease,
     background-color 0.2s ease;
+  cursor: pointer;
+  margin-top: 1rem;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  padding: 0.35rem;
+  color: var(--text);
+}
+
+.edit-btn:hover {
+  opacity: 1;
+  background-color: rgba(255, 92, 92, 0.08);
+  color: var(--primary);
+}
+
+/* ---------- Delete Button ---------- */
+
+.delete-btn {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  align-self: end;
+  justify-self: end;
+  opacity: 0.55;
+  transition:
+    color 0.2s ease,
+    opacity 0.2s ease,
+    background-color 0.2s ease;
+  cursor: pointer;
+  margin-top: 1rem;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  padding: 0.35rem;
+  color: var(--text);
 }
 
 .delete-btn:hover {
-  color: #ff5c5c;
   opacity: 1;
   background-color: rgba(255, 92, 92, 0.08);
+  color: var(--negative);
 }
 
 /* ---------- Tablet ---------- */
@@ -107,8 +142,8 @@
   .movie-poster-description {
     grid-template-columns: 1fr;
     justify-items: center;
-    text-align: center;
     gap: 1rem;
+    text-align: center;
   }
 
   .movie-img img {

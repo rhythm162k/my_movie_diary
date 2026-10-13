@@ -1,6 +1,14 @@
 import DeleteIcon from "@mui/icons-material/Delete";
+import EditNoteIcon from "@mui/icons-material/EditNote";
+import { useNavigate } from "react-router";
 import "./MovieCard.css";
 export default function MovieCard({ movie, handleDelete }) {
+  const navigate = useNavigate();
+
+  const handleEdit = () => {
+    navigate(`/edit-movie/${movie.id}`, { state: { movie } });
+  };
+
   return (
     <div className="movie" key={movie.id}>
       <div className="movie-poster-description">
@@ -18,9 +26,15 @@ export default function MovieCard({ movie, handleDelete }) {
         <h3>My Description:</h3>
         <p>{movie.description}</p>
       </div>
-      <button className="delete-btn" onClick={() => handleDelete(movie.id)}>
-        <DeleteIcon />
-      </button>
+
+      <div className="buttons">
+        <button className="edit-btn" onClick={handleEdit}>
+          <EditNoteIcon />
+        </button>
+        <button className="delete-btn" onClick={() => handleDelete(movie.id)}>
+          <DeleteIcon />
+        </button>
+      </div>
     </div>
   );
 }

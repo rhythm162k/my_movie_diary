@@ -1,6 +1,7 @@
 import { Navigate, Routes, Route } from "react-router";
 import HomePage from "./Pages/HomePage/HomePage";
 import AddNew from "./Pages/AddNew/AddNew";
+import EditMovie from "./Pages/EditPage/EditPage";
 import LoginPage from "./Pages/LoginRegistration/LoginPage";
 import RegistrationPage from "./Pages/LoginRegistration/RegistrationPage";
 import { useAuth } from "./context/AuthContext";
@@ -49,6 +50,13 @@ function App() {
       <Route
         path="/add-new"
         element={authenticated ? <AddNew /> : <Navigate to="/login" replace />}
+      />
+
+      <Route
+        path="/edit-movie/:id"
+        element={
+          authenticated ? <EditMovie /> : <Navigate to="/login" replace />
+        }
       />
     </Routes>
   );
