@@ -38,8 +38,6 @@ const apiKey = process.env.OMDB_API_KEY;
 const fallbackPoster =
   "https://cdn.displate.com/artwork/735x1024/2022-04-15/7422bfe15b3ea7b5933dffd896e9c7f9_46003a1b7353dc7b5a02949bd074432a.jpg";
 
-let poster = fallbackPoster;
-
 app.use(
   cors({
     origin: process.env.FRONTEND_URL || "http://localhost:5173",
@@ -245,6 +243,12 @@ app.post(
     }),
   ],
   async (req, res) => {
+    if (!req.session.userId) {
+      return res.status(401).json({
+        message: "Not authenticated.",
+      });
+    }
+
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({
@@ -252,13 +256,8 @@ app.post(
       });
     }
 
-    if (!req.session.userId) {
-      return res.status(401).json({
-        message: "Not authenticated.",
-      });
-    }
-
     const { title, description, rating } = req.body;
+    let poster = fallbackPoster;
 
     try {
       const response = await fetch(
@@ -348,7 +347,7 @@ app.patch("/api/movies/edit", async (req, res) => {
       message: "Not authenticated.",
     });
   }
-
+  let poster = fallbackPoster;
   const { id } = req.query;
   const updates = req.body;
 
