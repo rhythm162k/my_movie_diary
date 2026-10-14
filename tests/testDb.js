@@ -1,4 +1,11 @@
+import dotenv from "dotenv";
 import pg from "pg";
+
+dotenv.config({ path: ".env.test" });
+
+if (!process.env.PG_DATABASE?.includes("test")) {
+  throw new Error(`Refusing to run tests against "${process.env.PG_DATABASE}"`);
+}
 
 const testDb = new pg.Client({
   user: process.env.PG_USER,
