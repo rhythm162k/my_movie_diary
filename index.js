@@ -9,6 +9,11 @@ import connectPgSimple from "connect-pg-simple";
 import passport from "passport";
 import { body, query, validationResult } from "express-validator";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
+import {
+  generalLimiter,
+  loginLimiter,
+  googleAuthLimiter,
+} from "./middleware/rateLimiters.js";
 
 dotenv.config({
   path: process.env.NODE_ENV === "test" ? ".env.test" : ".env",
@@ -45,6 +50,7 @@ app.use(
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(express.static("public"));
+app.use("/api", generalLimiter);
 
 const PgSession = connectPgSimple(session);
 
@@ -137,6 +143,7 @@ app.get("/api/session", (req, res) => {
 
 app.get(
   "/auth/google",
+  googleAuthLimiter,
   passport.authenticate("google", {
     scope: ["profile", "email"],
   }),
@@ -144,6 +151,7 @@ app.get(
 
 app.get(
   "/auth/google/callback",
+  googleAuthLimiter,
   (req, res, next) => {
     // console.log("GOOGLE CALLBACK REACHED");
     next();
@@ -463,6 +471,7 @@ app.delete(
 
 app.post(
   "/api/registration",
+  loginLimiter,
   [
     body("name").trim().notEmpty().withMessage("Name is required."),
     body("email")
@@ -520,6 +529,7 @@ app.post(
 
 app.post(
   "/api/login",
+  loginLimiter,
   [
     body("email")
       .notEmpty()
