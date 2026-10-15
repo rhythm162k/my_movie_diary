@@ -55,3 +55,13 @@ export async function getMovie(id) {
   ]);
   return rows[0]; // undefined if it doesn't exist
 }
+
+// A user who signed up with Google: no password
+export async function insertGoogleOnlyUser(email) {
+  await deleteUsersByEmail(email);
+  await testDb.query(
+    `INSERT INTO users (name, email, password, googleid)
+     VALUES ($1, $2, NULL, $3)`,
+    ["Google User", email, "google-test-id-123"],
+  );
+}

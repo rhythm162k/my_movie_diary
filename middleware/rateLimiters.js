@@ -1,4 +1,5 @@
 import { rateLimit } from "express-rate-limit";
+const isTest = process.env.NODE_ENV === "test";
 
 export const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -13,6 +14,7 @@ export const generalLimiter = rateLimit({
 export const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 10,
+  skip: () => isTest,
   standardHeaders: true,
   legacyHeaders: false,
   message: {

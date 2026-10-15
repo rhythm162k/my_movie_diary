@@ -1,5 +1,4 @@
 import express from "express";
-import bodyParser from "body-parser";
 import dotenv from "dotenv";
 import pg from "pg";
 import cors from "cors";
@@ -21,11 +20,19 @@ dotenv.config({
 
 const app = express();
 app.set("trust proxy", 1);
-const port = process.env.PORT || 3000;
-// const saltRounds = 15;
-const saltRounds = process.env.NODE_ENV === "test" ? 4 : 15;
 
-const db = new pg.Client({
+const port = process.env.PORT || 3000;
+const saltRounds = process.env.NODE_ENV === "test" ? 4 : 15;
+const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+const apiKey = process.env.OMDB_API_KEY;
+const fallbackPoster =
+  "https://cdn.displate.com/artwork/735x1024/2022-04-15/7422bfe15b3ea7b5933dffd896e9c7f9_46003a1b7353dc7b5a02949bd074432a.jpg";
+
+const EDITABLE_FIELDS = ["title", "description", "rating"];
+const MAX_INT4 = 2147483647;
+
+// A Pool reconnects on its own and is shared with the session store
+const db = new pg.Pool({
   user: process.env.PG_USER,
   host: process.env.PG_HOST,
   database: process.env.PG_DATABASE,
@@ -33,20 +40,14 @@ const db = new pg.Client({
   port: process.env.PG_PORT,
 });
 
-db.connect();
+db.on("error", (error) => {
+  console.error("Unexpected database error:", error);
+});
 
-const apiKey = process.env.OMDB_API_KEY;
-const fallbackPoster =
-  "https://cdn.displate.com/artwork/735x1024/2022-04-15/7422bfe15b3ea7b5933dffd896e9c7f9_46003a1b7353dc7b5a02949bd074432a.jpg";
+/* ---------- Middleware setup ---------- */
 
-app.use(
-  cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:5173",
-    credentials: true,
-  }),
-);
-
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use(cors({ origin: frontendUrl, credentials: true }));
+app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(express.static("public"));
 app.use("/api", generalLimiter);
@@ -55,15 +56,7 @@ const PgSession = connectPgSimple(session);
 
 app.use(
   session({
-    store: new PgSession({
-      conObject: {
-        user: process.env.PG_USER,
-        host: process.env.PG_HOST,
-        database: process.env.PG_DATABASE,
-        password: process.env.PG_PASSWORD,
-        port: process.env.PG_PORT,
-      },
-    }),
+    store: new PgSession({ pool: db }),
     secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
@@ -77,6 +70,49 @@ app.use(
 );
 
 app.use(passport.initialize());
+
+/* ---------- Helpers ---------- */
+
+// Authentication: runs before validation so logged-out users always get 401
+function requireAuth(req, res, next) {
+  if (!req.session.userId) {
+    return res.status(401).json({ message: "Not authenticated." });
+  }
+  next();
+}
+
+// New session id on login/registration (prevents session fixation)
+function startSession(req, userId) {
+  return new Promise((resolve, reject) => {
+    req.session.regenerate((regenerateError) => {
+      if (regenerateError) return reject(regenerateError);
+
+      req.session.userId = userId;
+      req.session.save((saveError) =>
+        saveError ? reject(saveError) : resolve(),
+      );
+    });
+  });
+}
+
+// Throws on network failure, so callers decide how to handle that
+async function fetchPoster(title) {
+  const response = await fetch(
+    `https://www.omdbapi.com/?apikey=${apiKey}&t=${encodeURIComponent(title)}`,
+  );
+
+  if (response.ok) {
+    const data = await response.json();
+
+    if (data.Response === "True" && data.Poster && data.Poster !== "N/A") {
+      return data.Poster;
+    }
+  }
+
+  return fallbackPoster;
+}
+
+/* ---------- Google OAuth ---------- */
 
 if (process.env.NODE_ENV !== "test") {
   passport.use(
@@ -113,8 +149,8 @@ if (process.env.NODE_ENV !== "test") {
 
           const result = await db.query(
             `INSERT INTO users (name, email, googleid)
-           VALUES ($1, $2, $3)
-           RETURNING userid`,
+             VALUES ($1, $2, $3)
+             RETURNING userid`,
             [name, email, googleId],
           );
 
@@ -128,82 +164,50 @@ if (process.env.NODE_ENV !== "test") {
   );
 }
 
-app.get("/api/session", (req, res) => {
-  if (!req.session.userId) {
-    return res.status(401).json({
-      message: "Not authenticated.",
-    });
-  }
-
-  res.status(200).json({
-    userId: req.session.userId,
-  });
-});
-
 app.get(
   "/auth/google",
   googleAuthLimiter,
-  passport.authenticate("google", {
-    scope: ["profile", "email"],
-  }),
+  passport.authenticate("google", { scope: ["profile", "email"] }),
 );
 
 app.get(
   "/auth/google/callback",
   googleAuthLimiter,
-  (req, res, next) => {
-    // console.log("GOOGLE CALLBACK REACHED");
-    next();
-  },
   passport.authenticate("google", {
-    failureRedirect: `${process.env.FRONTEND_URL || "http://localhost:5173"}/login`,
+    failureRedirect: `${frontendUrl}/login`,
     session: false,
   }),
-  (req, res) => {
-    // console.log("PASSPORT SUCCESS:", req.user);
-
-    req.session.userId = req.user.userid;
-
-    req.session.save((err) => {
-      if (err) {
-        console.error("SESSION SAVE ERROR:", err);
-        return res.status(500).send("Session error");
-      }
-
-      // console.log("SESSION SAVED:", req.session.userId);
-
-      res.redirect(
-        `${process.env.FRONTEND_URL || "http://localhost:5173"}/home`,
-      );
-    });
+  async (req, res, next) => {
+    try {
+      await startSession(req, req.user.userid);
+      res.redirect(`${frontendUrl}/home`);
+    } catch (error) {
+      next(error);
+    }
   },
 );
+
+/* ---------- Session ---------- */
+
+app.get("/api/session", requireAuth, (req, res) => {
+  res.status(200).json({ userId: req.session.userId });
+});
 
 app.post("/api/logout", (req, res) => {
   req.session.destroy((error) => {
     if (error) {
       console.error(error);
-
-      return res.status(500).json({
-        message: "Could not log out.",
-      });
+      return res.status(500).json({ message: "Could not log out." });
     }
 
     res.clearCookie("connect.sid");
-
-    res.status(200).json({
-      message: "Logged out successfully.",
-    });
+    res.status(200).json({ message: "Logged out successfully." });
   });
 });
 
-app.get("/api/movies", async (req, res) => {
-  if (!req.session.userId) {
-    return res.status(401).json({
-      message: "Not authenticated.",
-    });
-  }
+/* ---------- Movies ---------- */
 
+app.get("/api/movies", requireAuth, async (req, res) => {
   try {
     const result = await db.query(
       "SELECT * FROM movies WHERE userid = $1 ORDER BY id DESC",
@@ -213,15 +217,13 @@ app.get("/api/movies", async (req, res) => {
     res.json(result.rows);
   } catch (error) {
     console.error(error);
-
-    res.status(500).json({
-      message: "Something went wrong.",
-    });
+    res.status(500).json({ message: "Something went wrong." });
   }
 });
 
 app.post(
   "/api/movies",
+  requireAuth,
   [
     body("title").trim().notEmpty().withMessage("Title is required."),
     body("description")
@@ -244,245 +246,203 @@ app.post(
     }),
   ],
   async (req, res) => {
-    if (!req.session.userId) {
-      return res.status(401).json({
-        message: "Not authenticated.",
-      });
-    }
-
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({
-        message: errors.array()[0].msg,
-      });
+      return res.status(400).json({ message: errors.array()[0].msg });
     }
 
     const { title, description, rating } = req.body;
     let poster = fallbackPoster;
 
     try {
-      const response = await fetch(
-        `https://www.omdbapi.com/?apikey=${apiKey}&t=${encodeURIComponent(title)}`,
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-
-        if (data.Response === "True" && data.Poster && data.Poster !== "N/A") {
-          poster = data.Poster;
-        }
-      }
+      poster = await fetchPoster(title);
     } catch (error) {
       console.error("OMDb fetch failed:", error);
     }
 
     try {
       await db.query(
-        `INSERT INTO movies
-       (title, rating, description, imgsrc, userid)
-       VALUES ($1, $2, $3, $4, $5)`,
+        `INSERT INTO movies (title, rating, description, imgsrc, userid)
+         VALUES ($1, $2, $3, $4, $5)`,
         [title, rating, description, poster, req.session.userId],
       );
 
-      res.status(201).json({
-        message: "Movie added successfully.",
-      });
+      res.status(201).json({ message: "Movie added successfully." });
     } catch (error) {
       if (error.code === "23505") {
-        return res.status(409).json({
-          message: "You already added this movie.",
-        });
+        return res
+          .status(409)
+          .json({ message: "You already added this movie." });
       }
 
       console.error("Failed to add movie:", error);
-
-      return res.status(500).json({
-        message: "Something went wrong.",
-      });
+      res.status(500).json({ message: "Something went wrong." });
     }
   },
 );
 
 app.get(
   "/api/movies/search",
+  requireAuth,
   [query("title").trim().notEmpty().withMessage("Title is required")],
   async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({
-        message: errors.array()[0].msg,
-      });
+      return res.status(400).json({ message: errors.array()[0].msg });
     }
-
-    if (!req.session.userId) {
-      return res.status(401).json({
-        message: "Not authenticated.",
-      });
-    }
-
-    const { title } = req.query;
 
     try {
       const result = await db.query(
         `SELECT * FROM movies
-       WHERE userid = $1
-       AND LOWER(title) LIKE LOWER('%' || $2 || '%')
-       ORDER BY id DESC`,
-        [req.session.userId, title.trim()],
+         WHERE userid = $1
+         AND LOWER(title) LIKE LOWER('%' || $2 || '%')
+         ORDER BY id DESC`,
+        [req.session.userId, req.query.title.trim()],
       );
 
       res.json(result.rows);
     } catch (error) {
       console.error(error);
-
-      res.status(500).json({
-        message: "Something went wrong.",
-      });
+      res.status(500).json({ message: "Something went wrong." });
     }
   },
 );
 
-app.patch("/api/movies/edit", async (req, res) => {
-  if (!req.session.userId) {
-    return res.status(401).json({
-      message: "Not authenticated.",
-    });
-  }
-  let poster = fallbackPoster;
-  const { id } = req.query;
-  const updates = req.body;
-
-  const keys = Object.keys(updates);
-
-  if (keys.length === 0) {
-    return res.status(400).json({ message: "No fields provided for update" });
-  }
-
-  if (
-    "title" in updates &&
-    (!updates.title || String(updates.title).trim() === "")
-  ) {
-    return res.status(400).json({ message: "Title cannot be empty." });
-  }
-
-  if (
-    "description" in updates &&
-    (!updates.description || String(updates.description).trim() === "")
-  ) {
-    return res.status(400).json({ message: "Description cannot be empty." });
-  }
-
-  if ("rating" in updates) {
-    const ratingNum = Number(updates.rating);
-    if (updates.rating === "" || updates.rating === null || isNaN(ratingNum)) {
-      return res
-        .status(400)
-        .json({ message: "Rating must be a valid number." });
-    }
-
-    if (ratingNum < 0 || ratingNum > 10) {
-      return res
-        .status(400)
-        .json({ message: "Rating must be between 0 and 10." });
-    }
-  }
-
-  try {
-    if ("title" in updates) {
-      try {
-        const omdbResponse = await fetch(
-          `https://www.omdbapi.com/?apikey=${apiKey}&t=${encodeURIComponent(updates.title)}`,
-        );
-
-        if (omdbResponse.ok) {
-          const data = await omdbResponse.json();
-          if (
-            data.Response === "True" &&
-            data.Poster &&
-            data.Poster !== "N/A"
-          ) {
-            poster = data.Poster;
-          }
-        }
-        updates.imgsrc = poster;
-        keys.push("imgsrc");
-      } catch (omdbError) {
-        console.error(
-          "Failed to fetch from OMDB, continuing with regular update:",
-          omdbError,
-        );
-      }
-    }
-
-    const setClause = keys
-      .map((key, index) => `${key} = $${index + 1}`)
-      .join(", ");
-
-    const values = Object.values(updates);
-    values.push(id);
-    values.push(req.session.userId);
-
-    const query = `UPDATE movies SET ${setClause} WHERE id = $${values.length - 1} AND userid = $${values.length}`;
-
-    const result = await db.query(query, values);
-    if (result.rowCount === 0) {
-      return res.status(404).json({ message: "Movie not found." });
-    }
-
-    return res.status(200).json({
-      message: "Movie updated successfully.",
-    });
-  } catch (error) {
-    console.error("Failed to update movie:", error);
-
-    if (error.code === "23505") {
-      return res.status(409).json({
-        message: "A conflict occurred.",
-      });
-    }
-
-    return res.status(500).json({
-      message: "Something went wrong.",
-    });
-  }
-});
-
-app.delete(
-  "/api/delete",
+app.patch(
+  "/api/movies/edit",
+  requireAuth,
   [
     query("id")
-      .notEmpty()
-      .withMessage("There's some problem deleting this movie."),
+      .isInt({ min: 1, max: MAX_INT4 })
+      .withMessage("Invalid movie id."),
   ],
   async (req, res) => {
-    if (!req.session.userId) {
-      return res.status(401).json({ message: "Not authenticated." });
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ message: errors.array()[0].msg });
+    }
+
+    const { id } = req.query;
+
+    // Allow-list: anything else in the body (userid, id, foo...) is ignored
+    const updates = Object.fromEntries(
+      Object.entries(req.body ?? {}).filter(([key]) =>
+        EDITABLE_FIELDS.includes(key),
+      ),
+    );
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ message: "No fields provided for update" });
+    }
+
+    if (
+      "title" in updates &&
+      (!updates.title || String(updates.title).trim() === "")
+    ) {
+      return res.status(400).json({ message: "Title cannot be empty." });
+    }
+
+    if (
+      "description" in updates &&
+      (!updates.description || String(updates.description).trim() === "")
+    ) {
+      return res.status(400).json({ message: "Description cannot be empty." });
+    }
+
+    if ("rating" in updates) {
+      const ratingNum = Number(updates.rating);
+
+      if (
+        updates.rating === "" ||
+        updates.rating === null ||
+        isNaN(ratingNum)
+      ) {
+        return res
+          .status(400)
+          .json({ message: "Rating must be a valid number." });
+      }
+
+      if (ratingNum < 0 || ratingNum > 10) {
+        return res
+          .status(400)
+          .json({ message: "Rating must be between 0 and 10." });
+      }
     }
 
     try {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res.status(400).json({ message: errors.array()[0].msg });
+      if ("title" in updates) {
+        try {
+          updates.imgsrc = await fetchPoster(updates.title);
+        } catch (omdbError) {
+          console.error(
+            "Failed to fetch from OMDB, continuing with regular update:",
+            omdbError,
+          );
+        }
       }
 
-      const { id } = req.query;
+      const columns = Object.keys(updates);
+      const setClause = columns
+        .map((column, index) => `${column} = $${index + 1}`)
+        .join(", ");
 
+      const values = [...Object.values(updates), id, req.session.userId];
+
+      const sql = `UPDATE movies SET ${setClause}
+                   WHERE id = $${columns.length + 1}
+                   AND userid = $${columns.length + 2}`;
+
+      const result = await db.query(sql, values);
+
+      if (result.rowCount === 0) {
+        return res.status(404).json({ message: "Movie not found." });
+      }
+
+      res.status(200).json({ message: "Movie updated successfully." });
+    } catch (error) {
+      if (error.code === "23505") {
+        return res.status(409).json({ message: "A conflict occurred." });
+      }
+
+      console.error("Failed to update movie:", error);
+      res.status(500).json({ message: "Something went wrong." });
+    }
+  },
+);
+
+app.delete(
+  "/api/delete",
+  requireAuth,
+  [
+    query("id")
+      .isInt({ min: 1, max: MAX_INT4 })
+      .withMessage("There's some problem deleting this movie."),
+  ],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ message: errors.array()[0].msg });
+    }
+
+    try {
       const result = await db.query(
         "DELETE FROM movies WHERE id = $1 AND userid = $2",
-        [id, req.session.userId],
+        [req.query.id, req.session.userId],
       );
 
       if (result.rowCount === 0) {
         return res.status(404).json({ message: "Movie not found." });
       }
 
-      return res.status(200).json({ message: "Movie deleted successfully" });
+      res.status(200).json({ message: "Movie deleted successfully" });
     } catch (error) {
       console.error("Delete failed:", error);
-      return res.status(500).json({ error: "Internal Server Error" });
+      res.status(500).json({ message: "Something went wrong." });
     }
   },
 );
+
+/* ---------- Auth ---------- */
 
 app.post(
   "/api/registration",
@@ -500,10 +460,9 @@ app.post(
   async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({
-        message: errors.array()[0].msg,
-      });
+      return res.status(400).json({ message: errors.array()[0].msg });
     }
+
     const { name, email, password } = req.body;
 
     try {
@@ -522,22 +481,24 @@ app.post(
 
       const result = await db.query(
         `INSERT INTO users (name, email, password)
-       VALUES ($1, $2, $3)
-       RETURNING userid`,
+         VALUES ($1, $2, $3)
+         RETURNING userid`,
         [name, email, hash],
       );
 
-      req.session.userId = result.rows[0].userid;
+      await startSession(req, result.rows[0].userid);
 
-      res.status(201).json({
-        message: "User registered successfully.",
-      });
+      res.status(201).json({ message: "User registered successfully." });
     } catch (error) {
-      console.error(error);
+      // Two simultaneous registrations with the same email
+      if (error.code === "23505") {
+        return res.status(409).json({
+          message: "A user with this email already exists. So just Login ;)",
+        });
+      }
 
-      res.status(500).json({
-        message: "Something went wrong.",
-      });
+      console.error(error);
+      res.status(500).json({ message: "Something went wrong." });
     }
   },
 );
@@ -554,15 +515,14 @@ app.post(
     body("password")
       .notEmpty()
       .isLength({ min: 6 })
-      .withMessage("Envalid Password."),
+      .withMessage("Invalid password."),
   ],
   async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({
-        message: errors.array()[0].msg,
-      });
+      return res.status(400).json({ message: errors.array()[0].msg });
     }
+
     const { email, password } = req.body;
 
     try {
@@ -571,36 +531,41 @@ app.post(
         [email],
       );
 
-      if (result.rows.length === 0) {
-        return res.status(404).json({
-          message: "User with this email doesn't exist.",
-        });
-      }
-
       const user = result.rows[0];
 
-      const isPasswordCorrect = await bcrypt.compare(password, user.password);
+      const isValid =
+        user &&
+        user.password &&
+        (await bcrypt.compare(password, user.password));
 
-      if (!isPasswordCorrect) {
-        return res.status(403).json({
-          message: "Incorrect password.",
-        });
+      if (!isValid) {
+        return res.status(401).json({ message: "Invalid email or password." });
       }
 
-      req.session.userId = user.userid;
+      await startSession(req, user.userid);
 
-      res.status(200).json({
-        message: "User login successful.",
-      });
+      res.status(200).json({ message: "User login successful." });
     } catch (error) {
       console.error(error);
-
-      res.status(500).json({
-        message: "Something went wrong.",
-      });
+      res.status(500).json({ message: "Something went wrong." });
     }
   },
 );
+
+/* ---------- Error handler: must stay AFTER all routes ---------- */
+
+// eslint-disable-next-line no-unused-vars
+app.use((err, req, res, next) => {
+  if (res.headersSent) return next(err);
+
+  const status = err.status || err.statusCode || 500;
+
+  if (status >= 500) console.error(err);
+
+  res.status(status).json({
+    message: status >= 500 ? "Something went wrong." : "Invalid request.",
+  });
+});
 
 if (process.env.NODE_ENV !== "test") {
   app.listen(port, "0.0.0.0", () => {
@@ -608,4 +573,5 @@ if (process.env.NODE_ENV !== "test") {
   });
 }
 
+export { db };
 export default app;
