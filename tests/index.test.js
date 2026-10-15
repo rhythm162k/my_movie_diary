@@ -11,9 +11,12 @@ import {
 import request from "supertest";
 import app from "../index.js";
 import { testDb, connectTestDb, closeTestDb } from "./testDb.js";
-
-const testEmail = "test@example.test";
-const testPassword = "some-test-password";
+import {
+  createLoggedInUser,
+  deleteUsersByEmail,
+  insertMovie,
+  getMovie,
+} from "./helpers.js";
 
 beforeAll(async () => {
   await connectTestDb();
@@ -32,25 +35,32 @@ describe("GET /api/session", () => {
   });
 });
 
+// One table-driven test replaces the separate "not logged in" tests
+describe("protected routes", () => {
+  it.each([
+    ["get", "/api/movies"],
+    ["get", "/api/movies/search?title=x"],
+    ["post", "/api/movies"],
+    ["patch", "/api/movies/edit?id=1"],
+    ["delete", "/api/delete?id=1"],
+  ])("%s %s returns 401 when not logged in", async (method, url) => {
+    const res = await request(app)[method](url).send({});
+    expect(res.status).toBe(401);
+  });
+});
+
 describe("POST /api/registration", () => {
-  beforeEach(async () => {
-    await testDb.query("DELETE FROM users WHERE email = $1", [testEmail]);
-
-    await testDb.query(
-      `INSERT INTO users (name, email, password, googleid)
-       VALUES ($1, $2, $3, $4)`,
-      ["Test User", testEmail, "unused-test-password", null],
-    );
+  const email = "registration@example.test";
+  beforeAll(async () => {
+    await createLoggedInUser(email); // user now exists
   });
 
-  afterEach(async () => {
-    await testDb.query("DELETE FROM users WHERE email = $1", [testEmail]);
-  });
+  afterAll(() => deleteUsersByEmail(email));
 
   it("returns 409 when the email is already registered", async () => {
     const response = await request(app).post("/api/registration").send({
       name: "Another User",
-      email: testEmail,
+      email,
       password: "some-test-password",
     });
 
@@ -62,8 +72,17 @@ describe("POST /api/registration", () => {
 });
 
 describe("DELETE /api/delete", () => {
-  it("Returns 400 when there's no id", async () => {
-    const res = await request(app).delete("/api/delete").send({});
+  const email = "delete@example.test";
+  let user;
+
+  beforeAll(async () => {
+    user = await createLoggedInUser(email);
+  });
+
+  afterAll(() => deleteUsersByEmail(email));
+
+  it("returns 400 when there's no id", async () => {
+    const res = await user.agent.delete("/api/delete").send({});
 
     expect(res.status).toBe(400);
     expect(res.body.message).toBe("There's some problem deleting this movie.");
@@ -71,31 +90,21 @@ describe("DELETE /api/delete", () => {
 });
 
 describe("POST /api/movies", () => {
-  let agent;
-  let userId;
+  const email = "post-movies@example.test";
+  let user;
+
+  const payload = {
+    title: "Inception",
+    description: "A dream within a dream.",
+    rating: 9,
+  };
 
   beforeAll(async () => {
-    await testDb.query(
-      "DELETE FROM movies WHERE userid IN (SELECT userid FROM users WHERE email = $1)",
-      [testEmail],
-    );
-    await testDb.query("DELETE FROM users WHERE email = $1", [testEmail]);
-
-    agent = request.agent(app);
-    await agent
-      .post("/api/registration")
-      .send({ name: "Movie Tester", email: testEmail, password: testPassword })
-      .expect(201);
-
-    const { rows } = await testDb.query(
-      "SELECT userid FROM users WHERE email = $1",
-      [testEmail],
-    );
-    userId = rows[0].userid;
-  }, 20000);
+    user = await createLoggedInUser(email, "Movie Tester");
+  });
 
   beforeEach(async () => {
-    await testDb.query("DELETE FROM movies WHERE userid = $1", [userId]);
+    await testDb.query("DELETE FROM movies WHERE userid = $1", [user.userId]);
 
     vi.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: true,
@@ -110,41 +119,31 @@ describe("POST /api/movies", () => {
     vi.restoreAllMocks();
   });
 
-  afterAll(async () => {
-    await testDb.query("DELETE FROM movies WHERE userid = $1", [userId]);
-    await testDb.query("DELETE FROM users WHERE userid = $1", [userId]);
-  });
-  const payload = {
-    title: "Inception",
-    description: "A dream within a dream.",
-    rating: 9,
-  };
+  afterAll(() => deleteUsersByEmail(email));
 
   it("creates a movie and stores the submitted values", async () => {
-    const res = await agent.post("/api/movies").send(payload);
+    const res = await user.agent.post("/api/movies").send(payload);
 
     expect(res.status).toBe(201);
     expect(res.body.message).toBe("Movie added successfully.");
 
     const { rows } = await testDb.query(
       "SELECT * FROM movies WHERE userid = $1",
-      [userId],
+      [user.userId],
     );
     expect(rows).toHaveLength(1);
-
     expect(rows[0].title).toBe(payload.title);
     expect(rows[0].description).toBe(payload.description);
     expect(Number(rows[0].rating)).toBe(payload.rating);
     expect(rows[0].imgsrc).toBe("https://example.test/inception.jpg");
   });
 
-  it("returns 401 and inserts nothing when not logged in", async () => {
-    const res = await request(app).post("/api/movies").send(payload); // no agent = no cookie
+  it("inserts nothing when not logged in", async () => {
+    await request(app).post("/api/movies").send(payload);
 
-    expect(res.status).toBe(401);
     const { rows } = await testDb.query(
       "SELECT * FROM movies WHERE userid = $1",
-      [userId],
+      [user.userId],
     );
     expect(rows).toHaveLength(0);
   });
@@ -157,7 +156,7 @@ describe("POST /api/movies", () => {
       "Rating is required with a number between 0 and 10.",
     ],
   ])("returns 400 for invalid body #%#", async (body, message) => {
-    const res = await agent.post("/api/movies").send(body);
+    const res = await user.agent.post("/api/movies").send(body);
 
     expect(res.status).toBe(400);
     expect(res.body.message).toBe(message);
@@ -169,28 +168,89 @@ describe("POST /api/movies", () => {
       json: async () => ({ Response: "False" }),
     });
 
-    const res = await agent.post("/api/movies").send(payload);
+    const res = await user.agent.post("/api/movies").send(payload);
     expect(res.status).toBe(201);
 
     const { rows } = await testDb.query(
       "SELECT imgsrc FROM movies WHERE userid = $1",
-      [userId],
+      [user.userId],
     );
-    expect(rows[0].imgsrc).toMatch(/displate\.com/); // your fallbackPoster URL
+    expect(rows[0].imgsrc).toMatch(/displate\.com/);
   });
 
   it("still saves the movie when the OMDb request throws", async () => {
     globalThis.fetch.mockRejectedValue(new Error("network down"));
 
-    const res = await agent.post("/api/movies").send(payload);
-    expect(res.status).toBe(201); // your try/catch around fetch makes this work
+    const res = await user.agent.post("/api/movies").send(payload);
+    expect(res.status).toBe(201);
   });
 
   it("returns 409 when the same movie is added twice", async () => {
-    await agent.post("/api/movies").send(payload).expect(201);
-    const res = await agent.post("/api/movies").send(payload);
+    await user.agent.post("/api/movies").send(payload).expect(201);
+    const res = await user.agent.post("/api/movies").send(payload);
 
     expect(res.status).toBe(409);
     expect(res.body.message).toBe("You already added this movie.");
+  });
+});
+
+describe("PATCH /api/movies/edit authorization", () => {
+  const emailA = "patch-a@example.test";
+  const emailB = "patch-b@example.test";
+  let userA, userB, movieId;
+
+  beforeAll(async () => {
+    userA = await createLoggedInUser(emailA);
+    userB = await createLoggedInUser(emailB);
+    movieId = await insertMovie(userA.userId, {
+      title: "Original Title",
+      description: "Original description",
+    });
+  });
+
+  afterAll(() => deleteUsersByEmail(emailA, emailB));
+
+  it("denies user B and leaves A's movie unchanged", async () => {
+    const res = await userB.agent
+      .patch(`/api/movies/edit?id=${movieId}`)
+      .send({ description: "hacked by B" });
+
+    expect(res.status).toBe(404);
+    expect((await getMovie(movieId)).description).toBe("Original description");
+  });
+
+  it("lets the owner edit their own movie", async () => {
+    const res = await userA.agent
+      .patch(`/api/movies/edit?id=${movieId}`)
+      .send({ description: "Updated by A" });
+
+    expect(res.status).toBe(200);
+    expect((await getMovie(movieId)).description).toBe("Updated by A");
+  });
+});
+
+describe("POST /api/login", () => {
+  let userid;
+  const email = "testlogin@example.test";
+  beforeAll(async () => {
+    const user = await createLoggedInUser(email); // user now exists
+    userid = user.userId;
+  });
+
+  afterAll(() => deleteUsersByEmail(email));
+
+  const agent = request.agent(app);
+
+  it("Returns 200 for a successfull Login", async () => {
+    await agent
+      .post("/api/login")
+      .send({ email, password: "some-test-password" })
+      .expect(200);
+  });
+
+  it("Returns 200 for GET /api/session after a successful login", async () => {
+    const res = await agent.get("/api/session");
+    expect(res.status).toBe(200);
+    expect(res.body.userId).toBe(userid);
   });
 });

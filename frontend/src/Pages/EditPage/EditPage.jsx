@@ -11,7 +11,6 @@ function EditMovie() {
   const location = useLocation();
   const navigate = useNavigate();
   const { movie } = location.state || {};
-  console.log(movie);
 
   const [error, setError] = React.useState("");
   const [formData, setFormData] = React.useState({
@@ -42,7 +41,6 @@ function EditMovie() {
       updatedFields.rating = formData.rating;
 
     if (Object.keys(updatedFields).length === 0) {
-      console.log("No changes detected.");
       navigate("/home");
       return;
     }

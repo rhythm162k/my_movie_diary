@@ -22,7 +22,8 @@ dotenv.config({
 const app = express();
 app.set("trust proxy", 1);
 const port = process.env.PORT || 3000;
-const saltRounds = 15;
+// const saltRounds = 15;
+const saltRounds = process.env.NODE_ENV === "test" ? 4 : 15;
 
 const db = new pg.Client({
   user: process.env.PG_USER,
@@ -419,12 +420,16 @@ app.patch("/api/movies/edit", async (req, res) => {
 
     const values = Object.values(updates);
     values.push(id);
+    values.push(req.session.userId);
 
-    const query = `UPDATE movies SET ${setClause} WHERE id = $${values.length}`;
+    const query = `UPDATE movies SET ${setClause} WHERE id = $${values.length - 1} AND userid = $${values.length}`;
 
-    await db.query(query, values);
+    const result = await db.query(query, values);
+    if (result.rowCount === 0) {
+      return res.status(404).json({ message: "Movie not found." });
+    }
 
-    res.status(200).json({
+    return res.status(200).json({
       message: "Movie updated successfully.",
     });
   } catch (error) {
@@ -450,15 +455,26 @@ app.delete(
       .withMessage("There's some problem deleting this movie."),
   ],
   async (req, res) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ message: "Not authenticated." });
+    }
+
     try {
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
-        return res.status(400).json({
-          message: errors.array()[0].msg,
-        });
+        return res.status(400).json({ message: errors.array()[0].msg });
       }
+
       const { id } = req.query;
-      await db.query("DELETE FROM movies WHERE id = $1", [id]);
+
+      const result = await db.query(
+        "DELETE FROM movies WHERE id = $1 AND userid = $2",
+        [id, req.session.userId],
+      );
+
+      if (result.rowCount === 0) {
+        return res.status(404).json({ message: "Movie not found." });
+      }
 
       return res.status(200).json({ message: "Movie deleted successfully" });
     } catch (error) {
