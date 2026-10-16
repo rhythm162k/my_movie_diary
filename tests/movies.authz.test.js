@@ -1,4 +1,6 @@
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from "vitest";
+import request from "supertest";
+import app from "../index.js";
 import { testDb } from "./testDb.js";
 import {
   createLoggedInUser,
@@ -148,5 +150,82 @@ describe("GET /api/movies isolation", () => {
     expect(res.status).toBe(200);
     expect(res.body).toHaveLength(1);
     expect(res.body[0].title).toBe("A's movie");
+  });
+});
+
+describe("DELETE /api/delete extra cases", () => {
+  const email = "authz2-delete@example.test";
+  let user;
+
+  beforeAll(async () => {
+    user = await createLoggedInUser(email);
+  });
+
+  beforeEach(async () => {
+    await testDb.query("DELETE FROM movies WHERE userid = $1", [user.userId]);
+  });
+
+  afterAll(() => deleteUsersByEmail(email));
+
+  // T076
+  it("returns 404 for an id that does not exist", async () => {
+    const res = await user.agent.delete("/api/delete?id=2147483000");
+
+    expect(res.status).toBe(404);
+    expect(res.body.message).toBe("Movie not found.");
+  });
+
+  // T077
+  it("deletes only the targeted movie", async () => {
+    const keepId = await insertMovie(user.userId, { title: "Keep me" });
+    const deleteId = await insertMovie(user.userId, { title: "Delete me" });
+
+    await user.agent.delete(`/api/delete?id=${deleteId}`).expect(200);
+
+    expect(await getMovie(deleteId)).toBeUndefined();
+    expect(await getMovie(keepId)).toBeDefined();
+  });
+
+  // T078
+  it("returns 200 the first time and 404 the second time", async () => {
+    const id = await insertMovie(user.userId);
+
+    const first = await user.agent.delete(`/api/delete?id=${id}`);
+    const second = await user.agent.delete(`/api/delete?id=${id}`);
+
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(404);
+  });
+});
+
+// T079: the 401 table in auth.test.js uses a fake id. Here the movie is real,
+// so we can prove a logged-out request really changes nothing.
+describe("logged-out PATCH and DELETE on a real movie", () => {
+  const email = "authz2-loggedout@example.test";
+  let movieId;
+
+  beforeAll(async () => {
+    const owner = await createLoggedInUser(email);
+    movieId = await insertMovie(owner.userId, {
+      description: "Original description",
+    });
+  });
+
+  afterAll(() => deleteUsersByEmail(email));
+
+  it("PATCH returns 401 and leaves the movie unchanged", async () => {
+    const res = await request(app)
+      .patch(`/api/movies/edit?id=${movieId}`)
+      .send({ description: "hacked" });
+
+    expect(res.status).toBe(401);
+    expect((await getMovie(movieId)).description).toBe("Original description");
+  });
+
+  it("DELETE returns 401 and the movie still exists", async () => {
+    const res = await request(app).delete(`/api/delete?id=${movieId}`);
+
+    expect(res.status).toBe(401);
+    expect(await getMovie(movieId)).toBeDefined();
   });
 });
