@@ -8,6 +8,8 @@ import {
   insertGoogleOnlyUser,
 } from "./helpers.js";
 import { testDb } from "./testDb.js";
+import { name } from "ejs";
+import passport from "passport";
 
 // Emails in this file are prefixed "auth-" so they never collide with other files.
 
@@ -17,6 +19,71 @@ describe("GET /api/session", () => {
 
     expect(res.status).toBe(401);
     expect(res.body.message).toBe("Not authenticated.");
+  });
+});
+
+describe("Session Cookie is Defined", () => {
+  const email = "set-session-cookie@example.test";
+  const creds = {
+    email,
+    password: TEST_PASSWORD,
+  };
+
+  const getSid = (res) =>
+    res.headers["set-cookie"]
+      ?.find((c) => c.startsWith("connect.sid="))
+      ?.split(";")[0];
+
+  beforeAll(async () => {
+    await createLoggedInUser(email); // user now exists
+    deleteUsersByEmail("non-existing@example.com");
+  });
+
+  afterAll(() => deleteUsersByEmail(email));
+
+  it("sets an HttpOnly session cookie on sign-in", async () => {
+    const res = await request(app).post("/api/login").send(creds).expect(200);
+
+    const cookies = res.headers["set-cookie"]; // array of strings
+    expect(cookies).toBeDefined();
+    const sid = cookies.find((c) => c.startsWith("connect.sid="));
+    expect(sid).toBeDefined();
+    expect(sid).toContain("HttpOnly");
+    expect(sid).toContain("SameSite=Lax");
+  });
+
+  it("tells the browser to delete the cookie on sign-out", async () => {
+    const agent = request.agent(app);
+    await agent.post("/api/login").send(creds).expect(200);
+    const res = await agent.post("/api/logout").expect(200);
+    const cleared = res.headers["set-cookie"].find((c) =>
+      c.startsWith("connect.sid=;"),
+    );
+    expect(cleared).toBeDefined();
+    expect(cleared).toContain("Expires=Thu, 01 Jan 1970");
+  });
+
+  it("issues a new session id when you sign in", async () => {
+    const agent = request.agent(app);
+    const first = await agent
+      .post("/api/registration")
+      .send({
+        name: "newUserTest",
+        email: "non-existing@example.com",
+        password: "abc1223",
+      })
+      .expect(201);
+    const second = await agent
+      .post("/api/login")
+      .send({
+        email: "non-existing@example.com",
+        password: "abc1223",
+      })
+      .expect(200);
+
+    expect(getSid(first)).toBeDefined();
+    expect(getSid(second)).toBeDefined();
+    expect(getSid(second)).not.toBe(getSid(first));
   });
 });
 

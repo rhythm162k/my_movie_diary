@@ -5,7 +5,9 @@
   "main": "index.js",
   "scripts": {
     "start": "nodemon index.js",
-    "test": "NODE_ENV=test vitest"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage"
   },
   "keywords": [],
   "author": "",
