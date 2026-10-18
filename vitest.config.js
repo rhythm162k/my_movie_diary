@@ -5,5 +5,10 @@ export default defineConfig({
     environment: "node",
     fileParallelism: false,
     setupFiles: ["./tests/setup.js"],
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "html"],
+      include: ["index.js", "middleware/**/*.js"],
+    },
   },
 });

@@ -1,6 +1,14 @@
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import {
+  describe,
+  it,
+  expect,
+  beforeAll,
+  afterAll,
+  vi,
+  afterEach,
+} from "vitest";
 import request from "supertest";
-import app from "../index.js";
+import app, { db } from "../index.js";
 import {
   TEST_PASSWORD,
   createLoggedInUser,
@@ -8,8 +16,7 @@ import {
   insertGoogleOnlyUser,
 } from "./helpers.js";
 import { testDb } from "./testDb.js";
-import { name } from "ejs";
-import passport from "passport";
+import bcrypt from "bcrypt";
 
 // Emails in this file are prefixed "auth-" so they never collide with other files.
 
@@ -103,58 +110,15 @@ describe("protected routes", () => {
 });
 
 describe("POST /api/registration", () => {
+  let user, stored;
   const email = "registration@example.test";
 
-  afterAll(() => deleteUsersByEmail(email));
-
-  it("returns 200 with a successful registration, stores the data and create a user session", async () => {
-    const agent = await request.agent(app);
-    await agent
-      .post("/api/registration")
-      .send({
-        name: "Another User",
-        email,
-        password: TEST_PASSWORD,
-      })
-      .expect(201);
-
-    const { rows } = await testDb.query(
-      "SELECT * FROM users WHERE email = $1",
-      [email],
-    );
-    expect(rows).toHaveLength(1);
-    expect(rows[0].name).toBe("Another User");
-    expect(rows[0].email).toBe(email);
-    const res = await agent.get("/api/session");
-    expect(res.status).toBe(200);
-    expect(res.body.userId).toBeDefined();
-  });
-});
-
-describe("POST /api/registration with Existing mail", () => {
-  const email = "auth-registration@example.test";
-
   beforeAll(async () => {
-    await createLoggedInUser(email); // user now exists
+    user = await createLoggedInUser(email);
   });
 
-  afterAll(() => deleteUsersByEmail(email));
+  afterAll(async () => await deleteUsersByEmail(email));
 
-  it("returns 409 when the email is already registered", async () => {
-    const res = await request(app).post("/api/registration").send({
-      name: "Another User",
-      email,
-      password: TEST_PASSWORD,
-    });
-
-    expect(res.status).toBe(409);
-    expect(res.body.message).toBe(
-      "A user with this email already exists. So just Login ;)",
-    );
-  });
-});
-
-describe("POST /api/registration validation", () => {
   it.each([
     [{ email: "a@example.test", password: "123456" }, "Name is required."],
     [
@@ -170,6 +134,86 @@ describe("POST /api/registration validation", () => {
 
     expect(res.status).toBe(400);
     expect(res.body.message).toBe(message);
+  });
+
+  it("returns 200 with a successful registration, stores the data and create a user session", async () => {
+    const { rows } = await testDb.query(
+      "SELECT * FROM users WHERE email = $1",
+      [user.email],
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0].name).toBe("Tester");
+    expect(rows[0].email).toBe(email);
+    const res = await user.agent.get("/api/session");
+    expect(res.status).toBe(200);
+    expect(res.body.userId).toBeDefined();
+  });
+
+  it("returns 409 when the email is already registered", async () => {
+    const res = await request(app).post("/api/registration").send({
+      name: "Tester",
+      email,
+      password: TEST_PASSWORD,
+    });
+
+    expect(res.status).toBe(409);
+    expect(res.body.message).toBe(
+      "A user with this email already exists. So just Login ;)",
+    );
+  });
+
+  it("stores a bcrypt hash, not the plain password", async () => {
+    const { rows } = await testDb.query(
+      "SELECT password FROM users WHERE email = $1",
+      [user.email],
+    );
+    stored = rows[0].password;
+    expect(stored).not.toBe(TEST_PASSWORD);
+    expect(stored.startsWith("$2")).toBe(true); // bcrypt prefix
+    expect(await bcrypt.compare(TEST_PASSWORD, stored)).toBe(true);
+  });
+
+  it("two users with similar password have different hashed password", async () => {
+    const second_user_email = "test-second-mail@example.test";
+    const second_user = await createLoggedInUser(second_user_email);
+    const { rows } = await testDb.query(
+      "SELECT password FROM users WHERE email = $1",
+      [second_user.email],
+    );
+    const second_stored = rows[0].password;
+    expect(stored).not.toBe(second_stored);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("returns 409 when the insert loses a race", async () => {
+    const realQuery = db.query.bind(db);
+    const duplicateError = Object.assign(new Error("duplicate key"), {
+      code: "23505",
+    });
+
+    vi.spyOn(db, "query").mockImplementation((sql, ...args) => {
+      if (typeof sql === "string" && sql.includes("FROM users WHERE email")) {
+        return Promise.resolve({ rows: [] });
+      }
+      if (typeof sql === "string" && sql.includes("INSERT INTO users")) {
+        return Promise.reject(duplicateError);
+      }
+      return realQuery(sql, ...args);
+    });
+
+    const res = await request(app).post("/api/registration").send({
+      name: "Race Tester",
+      email: "auth3-race@example.test",
+      password: TEST_PASSWORD,
+    });
+
+    expect(res.status).toBe(409);
+    expect(res.body.message).toBe(
+      "A user with this email already exists. So just Login ;)",
+    );
   });
 });
 

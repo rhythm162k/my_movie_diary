@@ -355,6 +355,23 @@ describe("GET /api/movies and /api/movies/search", () => {
       expect(res.body.message).toBe("Title is required");
     },
   );
+
+  it.each([
+    [`'; DROP TABLE products; --`], // tries to destroy the table
+    [`' OR '1'='1`], // tries to make the filter always true
+  ])("treats the payload %s as plain text", async (payload) => {
+    await insertMovie(userA.userId, { title: "Harry Potter" });
+    const res = await userA.agent
+      .get("/api/movies/search")
+      .query({ title: payload });
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual([]);
+    const { rows } = await testDb.query(
+      "SELECT title FROM movies WHERE userid = $1",
+      [userA.userId],
+    );
+    expect(rows).toHaveLength(1);
+  });
 });
 
 /* =====================  PATCH /api/movies/edit  ===================== */
