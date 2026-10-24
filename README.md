@@ -8,7 +8,7 @@
 [![Node.js](https://img.shields.io/badge/Node.js-Express-339933?logo=nodedotjs&logoColor=white)](https://expressjs.com/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-pg-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![Tests](https://img.shields.io/badge/tests-Vitest%20%2B%20Supertest-6E9F18?logo=vitest&logoColor=white)](https://vitest.dev/)
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/rhythm162k/my_movie_diary)
+[![Ask DeepWiki](https://img.shields.io/badge/Ask-DeepWiki-0A66C2)](https://deepwiki.com/rhythm162k/my_movie_diary)
 
 </div>
 
@@ -763,7 +763,7 @@ Run `npm run coverage` to regenerate the reports in `coverage/` (text and HTML).
 
 An auto-generated, source-linked wiki of this codebase is available on DeepWiki:
 
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/rhythm162k/my_movie_diary)
+[![Ask DeepWiki](https://img.shields.io/badge/Ask-DeepWiki-0A66C2)](https://deepwiki.com/rhythm162k/my_movie_diary)
 
 ## Author
 
