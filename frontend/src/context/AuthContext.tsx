@@ -1,11 +1,19 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useEffect, useState } from "react";
+import type { Dispatch, ReactNode, SetStateAction } from "react";
 import axios from "axios";
 import API_URL from "../api";
+import ServerWaking from "../components/ServerWaking";
 
-const AuthContext = createContext();
+interface AuthContextValue {
+  authenticated: boolean;
+  setAuthenticated: Dispatch<SetStateAction<boolean>>;
+  loading: boolean;
+}
 
-export function AuthProvider({ children }) {
+const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [authenticated, setAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -28,11 +36,17 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider value={{ authenticated, setAuthenticated, loading }}>
-      {!loading && children}
+      {loading ? <ServerWaking /> : children}
     </AuthContext.Provider>
   );
 }
 
-export function useAuth() {
-  return useContext(AuthContext);
+export function useAuth(): AuthContextValue {
+  const context = useContext(AuthContext);
+
+  if (!context) {
+    throw new Error("useAuth must be used inside an AuthProvider");
+  }
+
+  return context;
 }

@@ -4,11 +4,11 @@ export default defineConfig({
   test: {
     environment: "node",
     fileParallelism: false,
-    setupFiles: ["./tests/setup.js"],
+    setupFiles: ["./tests/setup.ts"],
     coverage: {
       provider: "v8",
       reporter: ["text", "html"],
-      include: ["index.js", "middleware/**/*.js"],
+      include: ["index.ts", "middleware/**/*.ts"],
     },
   },
 });

@@ -7,6 +7,7 @@ import {
   vi,
   afterEach,
 } from "vitest";
+import type { Mock } from "vitest";
 import request from "supertest";
 import app, { db } from "../index.js";
 import {
@@ -14,6 +15,7 @@ import {
   createLoggedInUser,
   deleteUsersByEmail,
   insertGoogleOnlyUser,
+  type TestUser,
 } from "./helpers.js";
 import { testDb } from "./testDb.js";
 import bcrypt from "bcrypt";
@@ -36,8 +38,8 @@ describe("Session Cookie is Defined", () => {
     password: TEST_PASSWORD,
   };
 
-  const getSid = (res) =>
-    res.headers["set-cookie"]
+  const getSid = (res: request.Response) =>
+    (res.headers["set-cookie"] as unknown as string[])
       ?.find((c) => c.startsWith("connect.sid="))
       ?.split(";")[0];
 
@@ -51,7 +53,7 @@ describe("Session Cookie is Defined", () => {
   it("sets an HttpOnly session cookie on sign-in", async () => {
     const res = await request(app).post("/api/login").send(creds).expect(200);
 
-    const cookies = res.headers["set-cookie"]; // array of strings
+    const cookies = (res.headers["set-cookie"] as unknown as string[]); // array of strings
     expect(cookies).toBeDefined();
     const sid = cookies.find((c) => c.startsWith("connect.sid="));
     expect(sid).toBeDefined();
@@ -63,7 +65,7 @@ describe("Session Cookie is Defined", () => {
     const agent = request.agent(app);
     await agent.post("/api/login").send(creds).expect(200);
     const res = await agent.post("/api/logout").expect(200);
-    const cleared = res.headers["set-cookie"].find((c) =>
+    const cleared = (res.headers["set-cookie"] as unknown as string[]).find((c) =>
       c.startsWith("connect.sid=;"),
     );
     expect(cleared).toBeDefined();
@@ -110,7 +112,7 @@ describe("protected routes", () => {
 });
 
 describe("POST /api/registration", () => {
-  let user, stored;
+  let user: TestUser, stored: string;
   const email = "registration@example.test";
 
   beforeAll(async () => {
@@ -189,12 +191,12 @@ describe("POST /api/registration", () => {
   });
 
   it("returns 409 when the insert loses a race", async () => {
-    const realQuery = db.query.bind(db);
+    const realQuery = db.query.bind(db) as (...args: any[]) => Promise<any>;
     const duplicateError = Object.assign(new Error("duplicate key"), {
       code: "23505",
     });
 
-    vi.spyOn(db, "query").mockImplementation((sql, ...args) => {
+    (vi.spyOn(db, "query") as unknown as Mock).mockImplementation((sql, ...args) => {
       if (typeof sql === "string" && sql.includes("FROM users WHERE email")) {
         return Promise.resolve({ rows: [] });
       }
@@ -421,7 +423,7 @@ describe("POST /api/login variants", () => {
 describe("GET /api/session with two users", () => {
   const emailA = "auth2-session-a@example.test";
   const emailB = "auth2-session-b@example.test";
-  let userA, userB;
+  let userA: TestUser, userB: TestUser;
 
   beforeAll(async () => {
     userA = await createLoggedInUser(emailA);
@@ -443,7 +445,7 @@ describe("GET /api/session with two users", () => {
 /* ---------- logout edge cases ---------- */
 describe("POST /api/logout edge cases", () => {
   const email = "auth2-logout@example.test";
-  let user;
+  let user: TestUser;
 
   beforeAll(async () => {
     user = await createLoggedInUser(email);

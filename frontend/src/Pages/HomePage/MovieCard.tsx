@@ -1,8 +1,15 @@
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditNoteIcon from "@mui/icons-material/EditNote";
 import { useNavigate } from "react-router";
+import type { Movie } from "../../types";
 import "./MovieCard.css";
-export default function MovieCard({ movie, handleDelete }) {
+
+interface MovieCardProps {
+  movie: Movie;
+  handleDelete: (movieId: number) => void;
+}
+
+export default function MovieCard({ movie, handleDelete }: MovieCardProps) {
   const navigate = useNavigate();
 
   const handleEdit = () => {

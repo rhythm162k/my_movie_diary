@@ -1,5 +1,6 @@
 import React from "react";
 import axios from "axios";
+import type { AxiosError } from "axios";
 import { useNavigate, Link } from "react-router";
 import { useAuth } from "../../context/AuthContext";
 import LoadingSVG from "../../components/LoadingSVG";
@@ -19,7 +20,7 @@ function LoginPage() {
     password: "",
   });
 
-  const handleChange = (event) => {
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = event.target;
     setLoginData({
       ...loginData,
@@ -27,7 +28,7 @@ function LoginPage() {
     });
   };
 
-  const handleSubmit = async (event) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError("");
     setLoading(true);
@@ -39,7 +40,7 @@ function LoginPage() {
       navigate("/home");
     } catch (error) {
       setLoading(false);
-      setError(error.response.data.message);
+      setError((error as AxiosError<{ message: string }>).response!.data.message);
     }
   };
   return (

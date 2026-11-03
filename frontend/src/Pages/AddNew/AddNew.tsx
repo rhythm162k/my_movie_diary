@@ -1,4 +1,5 @@
 import axios from "axios";
+import type { AxiosError } from "axios";
 import React from "react";
 import { useNavigate } from "react-router";
 import ErrorIcon from "@mui/icons-material/Error";
@@ -17,7 +18,9 @@ function AddMovie() {
   });
   const [loading, setLoading] = React.useState(false);
 
-  const handleChange = (event) => {
+  const handleChange = (
+    event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+  ) => {
     const { name, value } = event.target;
     setFormData({
       ...formData,
@@ -25,7 +28,7 @@ function AddMovie() {
     });
   };
 
-  const handleSubmit = async (event) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError("");
     setLoading(true);
@@ -36,7 +39,7 @@ function AddMovie() {
       navigate("/home");
     } catch (error) {
       setLoading(false);
-      setError(error.response.data.message);
+      setError((error as AxiosError<{ message: string }>).response!.data.message);
     }
   };
 
@@ -66,7 +69,7 @@ function AddMovie() {
             <textarea
               id="description"
               name="description"
-              rows="6"
+              rows={6}
               placeholder="Write your thoughts about the movie..."
               value={formData.description}
               onChange={handleChange}

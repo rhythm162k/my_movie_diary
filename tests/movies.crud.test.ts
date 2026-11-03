@@ -8,6 +8,7 @@ import {
   afterAll,
   vi,
 } from "vitest";
+import type { Mock } from "vitest";
 import request from "supertest";
 import app from "../index.js";
 import { testDb } from "./testDb.js";
@@ -16,11 +17,12 @@ import {
   deleteUsersByEmail,
   insertMovie,
   getMovie,
+  type TestUser,
 } from "./helpers.js";
 
 describe("POST /api/movies", () => {
   const email = "crud-post@example.test";
-  let user;
+  let user: TestUser;
 
   const payload = {
     title: "Inception",
@@ -41,7 +43,7 @@ describe("POST /api/movies", () => {
         Response: "True",
         Poster: "https://example.test/inception.jpg",
       }),
-    });
+    } as unknown as Response);
   });
 
   afterEach(() => {
@@ -92,7 +94,7 @@ describe("POST /api/movies", () => {
   });
 
   it("uses the fallback poster when OMDb finds nothing", async () => {
-    globalThis.fetch.mockResolvedValue({
+    (globalThis.fetch as unknown as Mock).mockResolvedValue({
       ok: true,
       json: async () => ({ Response: "False" }),
     });
@@ -108,7 +110,7 @@ describe("POST /api/movies", () => {
   });
 
   it("still saves the movie when the OMDb request throws", async () => {
-    globalThis.fetch.mockRejectedValue(new Error("network down"));
+    (globalThis.fetch as unknown as Mock).mockRejectedValue(new Error("network down"));
     // Keep the test output clean; also proves the error was logged, not swallowed
     vi.spyOn(console, "error").mockImplementation(() => {});
 
@@ -134,10 +136,10 @@ function mockOmdb() {
   vi.spyOn(globalThis, "fetch").mockResolvedValue({
     ok: true,
     json: async () => ({ Response: "True", Poster: DEFAULT_POSTER }),
-  });
+  } as unknown as Response);
 }
 
-async function deleteMoviesOf(...users) {
+async function deleteMoviesOf(...users: TestUser[]) {
   for (const user of users) {
     await testDb.query("DELETE FROM movies WHERE userid = $1", [user.userId]);
   }
@@ -147,7 +149,7 @@ async function deleteMoviesOf(...users) {
 describe("POST /api/movies extra cases", () => {
   const emailA = "crud2-post-a@example.test";
   const emailB = "crud2-post-b@example.test";
-  let userA, userB;
+  let userA: TestUser, userB: TestUser;
 
   const payload = {
     title: "Interstellar",
@@ -225,7 +227,7 @@ describe("POST /api/movies extra cases", () => {
       },
     ],
   ])("uses the fallback poster when %s", async (_label, omdbResponse) => {
-    globalThis.fetch.mockResolvedValue(omdbResponse);
+    (globalThis.fetch as unknown as Mock).mockResolvedValue(omdbResponse);
 
     const res = await userA.agent.post("/api/movies").send(payload);
     expect(res.status).toBe(201);
@@ -267,7 +269,7 @@ describe("POST /api/movies extra cases", () => {
 describe("GET /api/movies and /api/movies/search", () => {
   const emailA = "crud2-list-a@example.test";
   const emailB = "crud2-list-b@example.test";
-  let userA, userB;
+  let userA: TestUser, userB: TestUser;
 
   beforeAll(async () => {
     userA = await createLoggedInUser(emailA);
@@ -377,7 +379,7 @@ describe("GET /api/movies and /api/movies/search", () => {
 /* =====================  PATCH /api/movies/edit  ===================== */
 describe("PATCH /api/movies/edit behaviour", () => {
   const email = "crud2-patch@example.test";
-  let user, movieId;
+  let user: TestUser, movieId: number;
 
   beforeAll(async () => {
     user = await createLoggedInUser(email);
@@ -404,7 +406,7 @@ describe("PATCH /api/movies/edit behaviour", () => {
 
   // T056
   it("changing the title fetches a new poster and saves it", async () => {
-    globalThis.fetch.mockResolvedValue({
+    (globalThis.fetch as unknown as Mock).mockResolvedValue({
       ok: true,
       json: async () => ({
         Response: "True",
@@ -422,7 +424,7 @@ describe("PATCH /api/movies/edit behaviour", () => {
 
   // T057
   it("still updates the title when the OMDb request throws", async () => {
-    globalThis.fetch.mockRejectedValue(new Error("network down"));
+    (globalThis.fetch as unknown as Mock).mockRejectedValue(new Error("network down"));
     vi.spyOn(console, "error").mockImplementation(() => {});
 
     const res = await patch({ title: "Renamed Anyway" });

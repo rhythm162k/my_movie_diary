@@ -7,17 +7,19 @@ import {
   afterAll,
   vi,
 } from "vitest";
+import type { Mock } from "vitest";
 import request from "supertest";
 import app, { db } from "../index.js";
 import {
   TEST_PASSWORD,
   createLoggedInUser,
   deleteUsersByEmail,
+  type TestUser,
 } from "./helpers.js";
 
-function failQueriesContaining(fragment) {
-  const realQuery = db.query.bind(db);
-  vi.spyOn(db, "query").mockImplementation((sql, ...args) =>
+function failQueriesContaining(fragment: string) {
+  const realQuery = db.query.bind(db) as (...args: any[]) => Promise<any>;
+  (vi.spyOn(db, "query") as unknown as Mock).mockImplementation((sql, ...args) =>
     typeof sql === "string" && sql.includes(fragment)
       ? Promise.reject(new Error("db down: secret internal detail"))
       : realQuery(sql, ...args),
@@ -25,7 +27,7 @@ function failQueriesContaining(fragment) {
   vi.spyOn(console, "error").mockImplementation(() => {}); // quiet logs
 }
 
-function expectSafe500(res) {
+function expectSafe500(res: request.Response) {
   expect(res.status).toBe(500);
   expect(res.body.message).toBe("Something went wrong.");
   expect(JSON.stringify(res.body)).not.toContain("secret internal detail");
@@ -51,7 +53,7 @@ describe("global error handler", () => {
 
 describe("500 responses", () => {
   const email = "errors-db-failure@example.test";
-  let user;
+  let user: TestUser;
 
   beforeAll(async () => {
     user = await createLoggedInUser(email);
@@ -66,8 +68,8 @@ describe("500 responses", () => {
   it("GET /api/movies returns a safe 500 when the DB fails", async () => {
     // Fail only the movies query. The session store uses the same pool,
     // so failing every query would break the session lookup and hang.
-    const realQuery = db.query.bind(db);
-    vi.spyOn(db, "query").mockImplementation((sql, ...args) =>
+    const realQuery = db.query.bind(db) as (...args: any[]) => Promise<any>;
+    (vi.spyOn(db, "query") as unknown as Mock).mockImplementation((sql, ...args) =>
       typeof sql === "string" && sql.includes("FROM movies")
         ? Promise.reject(new Error("db down"))
         : realQuery(sql, ...args),
@@ -85,7 +87,7 @@ describe("500 responses", () => {
 /* ---------- T083 ---------- */
 describe("malformed JSON on movie routes", () => {
   const email = "errors2-json@example.test";
-  let user;
+  let user: TestUser;
 
   beforeAll(async () => {
     user = await createLoggedInUser(email);
@@ -109,7 +111,7 @@ describe("malformed JSON on movie routes", () => {
 /* ---------- T085 ---------- */
 describe("DB failure on movie routes returns a safe 500", () => {
   const email = "errors2-movies-500@example.test";
-  let user;
+  let user: TestUser;
 
   beforeAll(async () => {
     user = await createLoggedInUser(email);
@@ -132,7 +134,7 @@ describe("DB failure on movie routes returns a safe 500", () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: true,
       json: async () => ({ Response: "False" }),
-    });
+    } as unknown as Response);
     failQueriesContaining(sqlFragment);
 
     const res = await user.agent[method](url).send(body);

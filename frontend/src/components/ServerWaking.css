@@ -1,0 +1,45 @@
+.waking-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.waking-card {
+  width: 100%;
+  max-width: 420px;
+  padding: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  text-align: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+}
+
+.waking-logo {
+  width: 200px;
+}
+
+.waking-spinner .spinner {
+  width: 80px;
+  height: 80px;
+}
+
+.waking-card h1 {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--primary);
+}
+
+.waking-card p {
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--muted);
+}

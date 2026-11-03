@@ -1,4 +1,5 @@
 import axios from "axios";
+import type { AxiosError } from "axios";
 import React from "react";
 import { useLocation, useNavigate } from "react-router";
 import ErrorIcon from "@mui/icons-material/Error";
@@ -6,11 +7,12 @@ import { Link } from "react-router";
 import LoadingSVG from "../../components/LoadingSVG";
 import "./EditPage.css";
 import API_URL from "../../api";
+import type { Movie } from "../../types";
 
 function EditMovie() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { movie } = location.state || {};
+  const { movie } = (location.state || {}) as { movie: Movie };
 
   const [error, setError] = React.useState("");
   const [formData, setFormData] = React.useState({
@@ -20,7 +22,9 @@ function EditMovie() {
   });
   const [loading, setLoading] = React.useState(false);
 
-  const handleChange = (event) => {
+  const handleChange = (
+    event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+  ) => {
     const { name, value } = event.target;
     setFormData({
       ...formData,
@@ -28,12 +32,14 @@ function EditMovie() {
     });
   };
 
-  const handleSubmit = async (event) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError("");
     setLoading(true);
 
-    const updatedFields = {};
+    const updatedFields: Partial<
+      Pick<Movie, "title" | "description" | "rating">
+    > = {};
     if (formData.title !== movie.title) updatedFields.title = formData.title;
     if (formData.description !== movie.description)
       updatedFields.description = formData.description;
@@ -53,7 +59,7 @@ function EditMovie() {
       navigate("/home");
     } catch (error) {
       setLoading(false);
-      setError(error.response.data.message);
+      setError((error as AxiosError<{ message: string }>).response!.data.message);
     }
   };
 
@@ -83,7 +89,7 @@ function EditMovie() {
             <textarea
               id="description"
               name="description"
-              rows="6"
+              rows={6}
               placeholder="Write your thoughts about the movie..."
               value={formData.description}
               onChange={handleChange}
