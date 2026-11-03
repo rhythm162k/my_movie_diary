@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import type { FormEvent } from "react";
 import { useSearchParams, Link } from "react-router";
 import axios from "axios";
 import Pagination from "../../components/Pagination";
@@ -7,10 +8,11 @@ import Header from "./Header";
 import SkeletonLoad from "./SkeletonLoad";
 import "./HomePage.css";
 import API_URL from "../../api";
+import type { Movie } from "../../types";
 
 function HomePage() {
-  const [movies, setMovies] = useState([]);
-  const [searchResults, setSearchResults] = useState(null);
+  const [movies, setMovies] = useState<Movie[]>([]);
+  const [searchResults, setSearchResults] = useState<Movie[] | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState(() => searchParams.get("search") || "");
   const [currentPage, setCurrentPage] = useState(1);
@@ -26,7 +28,7 @@ function HomePage() {
       setLoading(true);
       try {
         if (searchQuery) {
-          const response = await axios.get(
+          const response = await axios.get<Movie[]>(
             `${API_URL}/api/movies/search?title=${encodeURIComponent(searchQuery)}`,
             {
               withCredentials: true,
@@ -35,7 +37,7 @@ function HomePage() {
 
           setSearchResults(response.data);
         } else {
-          const response = await axios.get(`${API_URL}/api/movies`, {
+          const response = await axios.get<Movie[]>(`${API_URL}/api/movies`, {
             withCredentials: true,
           });
 
@@ -60,13 +62,13 @@ function HomePage() {
     startIndex + moviesPerPage,
   );
 
-  const handleSearch = (event) => {
+  const handleSearch = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setCurrentPage(1);
     setSearchParams({ search });
   };
 
-  const handleDelete = async (movieId) => {
+  const handleDelete = async (movieId: number) => {
     try {
       await axios.delete(`${API_URL}/api/delete`, {
         params: { id: movieId },
@@ -111,7 +113,7 @@ function HomePage() {
       <div className="main-body">
         {loading ? (
           Array(6)
-            .fill()
+            .fill(undefined)
             .map((_, index) => <SkeletonLoad key={index} />)
         ) : paginatedMovies.length === 0 ? (
           searchResults !== null ? (

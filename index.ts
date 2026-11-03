@@ -1,4 +1,5 @@
 import express from "express";
+import type { NextFunction, Request, Response } from "express";
 import dotenv from "dotenv";
 import pg from "pg";
 import cors from "cors";
@@ -8,11 +9,30 @@ import connectPgSimple from "connect-pg-simple";
 import passport from "passport";
 import { body, query, validationResult } from "express-validator";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
+import type { Profile, VerifyCallback } from "passport-google-oauth20";
 import {
   generalLimiter,
   loginLimiter,
   googleAuthLimiter,
 } from "./middleware/rateLimiters.js";
+
+/* ---------- Type additions ---------- */
+
+// Tells TypeScript that our session stores a userId
+declare module "express-session" {
+  interface SessionData {
+    userId: number;
+  }
+}
+
+// Tells TypeScript what req.user looks like after Google login
+declare global {
+  namespace Express {
+    interface User {
+      userid: number;
+    }
+  }
+}
 
 dotenv.config({
   path: process.env.NODE_ENV === "test" ? ".env.test" : ".env",
@@ -21,8 +41,8 @@ dotenv.config({
 const app = express();
 app.set("trust proxy", 1);
 
-const port = process.env.PORT || 3000;
-const saltRounds = process.env.NODE_ENV === "test" ? 4 : 15;
+const port = Number(process.env.PORT) || 3000;
+const saltRounds = process.env.NODE_ENV === "test" ? 4 : 10;
 const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
 const apiKey = process.env.OMDB_API_KEY;
 const fallbackPoster =
@@ -37,7 +57,7 @@ const db = new pg.Pool({
   host: process.env.PG_HOST,
   database: process.env.PG_DATABASE,
   password: process.env.PG_PASSWORD,
-  port: process.env.PG_PORT,
+  port: process.env.PG_PORT ? Number(process.env.PG_PORT) : undefined,
 });
 
 db.on("error", (error) => {
@@ -57,7 +77,7 @@ const PgSession = connectPgSimple(session);
 app.use(
   session({
     store: new PgSession({ pool: db }),
-    secret: process.env.SESSION_SECRET,
+    secret: process.env.SESSION_SECRET!,
     resave: false,
     saveUninitialized: false,
     cookie: {
@@ -74,15 +94,16 @@ app.use(passport.initialize());
 /* ---------- Helpers ---------- */
 
 // Authentication: runs before validation so logged-out users always get 401
-function requireAuth(req, res, next) {
+function requireAuth(req: Request, res: Response, next: NextFunction): void {
   if (!req.session.userId) {
-    return res.status(401).json({ message: "Not authenticated." });
+    res.status(401).json({ message: "Not authenticated." });
+    return;
   }
   next();
 }
 
 // New session id on login/registration (prevents session fixation)
-function startSession(req, userId) {
+function startSession(req: Request, userId: number): Promise<void> {
   return new Promise((resolve, reject) => {
     req.session.regenerate((regenerateError) => {
       if (regenerateError) return reject(regenerateError);
@@ -96,13 +117,16 @@ function startSession(req, userId) {
 }
 
 // Throws on network failure, so callers decide how to handle that
-async function fetchPoster(title) {
+async function fetchPoster(title: string): Promise<string> {
   const response = await fetch(
     `https://www.omdbapi.com/?apikey=${apiKey}&t=${encodeURIComponent(title)}`,
   );
 
   if (response.ok) {
-    const data = await response.json();
+    const data = (await response.json()) as {
+      Response?: string;
+      Poster?: string;
+    };
 
     if (data.Response === "True" && data.Poster && data.Poster !== "N/A") {
       return data.Poster;
@@ -118,15 +142,20 @@ if (process.env.NODE_ENV !== "test") {
   passport.use(
     new GoogleStrategy(
       {
-        clientID: process.env.GOOGLE_CLIENT_ID,
-        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+        clientID: process.env.GOOGLE_CLIENT_ID!,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
         callbackURL: process.env.GOOGLE_CALLBACK_URL,
       },
 
-      async (accessToken, refreshToken, profile, done) => {
+      async (
+        accessToken: string,
+        refreshToken: string,
+        profile: Profile,
+        done: VerifyCallback,
+      ) => {
         try {
           const googleId = profile.id;
-          const email = profile.emails[0].value;
+          const email = profile.emails![0].value;
           const name = profile.displayName;
 
           const existingGoogleUser = await db.query(
@@ -157,7 +186,7 @@ if (process.env.NODE_ENV !== "test") {
           return done(null, result.rows[0]);
         } catch (error) {
           console.error("Google authentication error:", error);
-          return done(error, null);
+          return done(error as Error, undefined);
         }
       },
     ),
@@ -177,9 +206,9 @@ app.get(
     failureRedirect: `${frontendUrl}/login`,
     session: false,
   }),
-  async (req, res, next) => {
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      await startSession(req, req.user.userid);
+      await startSession(req, req.user!.userid);
       res.redirect(`${frontendUrl}/home`);
     } catch (error) {
       next(error);
@@ -189,15 +218,16 @@ app.get(
 
 /* ---------- Session ---------- */
 
-app.get("/api/session", requireAuth, (req, res) => {
+app.get("/api/session", requireAuth, (req: Request, res: Response) => {
   res.status(200).json({ userId: req.session.userId });
 });
 
-app.post("/api/logout", (req, res) => {
+app.post("/api/logout", (req: Request, res: Response) => {
   req.session.destroy((error) => {
     if (error) {
       console.error(error);
-      return res.status(500).json({ message: "Could not log out." });
+      res.status(500).json({ message: "Could not log out." });
+      return;
     }
 
     res.clearCookie("connect.sid");
@@ -207,19 +237,23 @@ app.post("/api/logout", (req, res) => {
 
 /* ---------- Movies ---------- */
 
-app.get("/api/movies", requireAuth, async (req, res) => {
-  try {
-    const result = await db.query(
-      "SELECT * FROM movies WHERE userid = $1 ORDER BY id DESC",
-      [req.session.userId],
-    );
+app.get(
+  "/api/movies",
+  requireAuth,
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const result = await db.query(
+        "SELECT * FROM movies WHERE userid = $1 ORDER BY id DESC",
+        [req.session.userId],
+      );
 
-    res.json(result.rows);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Something went wrong." });
-  }
-});
+      res.json(result.rows);
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: "Something went wrong." });
+    }
+  },
+);
 
 app.post(
   "/api/movies",
@@ -245,10 +279,11 @@ app.post(
       return true;
     }),
   ],
-  async (req, res) => {
+  async (req: Request, res: Response): Promise<void> => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ message: errors.array()[0].msg });
+      res.status(400).json({ message: errors.array()[0].msg });
+      return;
     }
 
     const { title, description, rating } = req.body;
@@ -269,10 +304,9 @@ app.post(
 
       res.status(201).json({ message: "Movie added successfully." });
     } catch (error) {
-      if (error.code === "23505") {
-        return res
-          .status(409)
-          .json({ message: "You already added this movie." });
+      if ((error as { code?: string }).code === "23505") {
+        res.status(409).json({ message: "You already added this movie." });
+        return;
       }
 
       console.error("Failed to add movie:", error);
@@ -285,10 +319,11 @@ app.get(
   "/api/movies/search",
   requireAuth,
   [query("title").trim().notEmpty().withMessage("Title is required")],
-  async (req, res) => {
+  async (req: Request, res: Response): Promise<void> => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ message: errors.array()[0].msg });
+      res.status(400).json({ message: errors.array()[0].msg });
+      return;
     }
 
     try {
@@ -297,7 +332,7 @@ app.get(
          WHERE userid = $1
          AND LOWER(title) LIKE LOWER('%' || $2 || '%')
          ORDER BY id DESC`,
-        [req.session.userId, req.query.title.trim()],
+        [req.session.userId, (req.query.title as string).trim()],
       );
 
       res.json(result.rows);
@@ -316,37 +351,41 @@ app.patch(
       .isInt({ min: 1, max: MAX_INT4 })
       .withMessage("Invalid movie id."),
   ],
-  async (req, res) => {
+  async (req: Request, res: Response): Promise<void> => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ message: errors.array()[0].msg });
+      res.status(400).json({ message: errors.array()[0].msg });
+      return;
     }
 
     const { id } = req.query;
 
     // Allow-list: anything else in the body (userid, id, foo...) is ignored
-    const updates = Object.fromEntries(
+    const updates: Record<string, unknown> = Object.fromEntries(
       Object.entries(req.body ?? {}).filter(([key]) =>
         EDITABLE_FIELDS.includes(key),
       ),
     );
 
     if (Object.keys(updates).length === 0) {
-      return res.status(400).json({ message: "No fields provided for update" });
+      res.status(400).json({ message: "No fields provided for update" });
+      return;
     }
 
     if (
       "title" in updates &&
       (!updates.title || String(updates.title).trim() === "")
     ) {
-      return res.status(400).json({ message: "Title cannot be empty." });
+      res.status(400).json({ message: "Title cannot be empty." });
+      return;
     }
 
     if (
       "description" in updates &&
       (!updates.description || String(updates.description).trim() === "")
     ) {
-      return res.status(400).json({ message: "Description cannot be empty." });
+      res.status(400).json({ message: "Description cannot be empty." });
+      return;
     }
 
     if ("rating" in updates) {
@@ -357,22 +396,20 @@ app.patch(
         updates.rating === null ||
         isNaN(ratingNum)
       ) {
-        return res
-          .status(400)
-          .json({ message: "Rating must be a valid number." });
+        res.status(400).json({ message: "Rating must be a valid number." });
+        return;
       }
 
       if (ratingNum < 0 || ratingNum > 10) {
-        return res
-          .status(400)
-          .json({ message: "Rating must be between 0 and 10." });
+        res.status(400).json({ message: "Rating must be between 0 and 10." });
+        return;
       }
     }
 
     try {
       if ("title" in updates) {
         try {
-          updates.imgsrc = await fetchPoster(updates.title);
+          updates.imgsrc = await fetchPoster(String(updates.title));
         } catch (omdbError) {
           console.error(
             "Failed to fetch from OMDB, continuing with regular update:",
@@ -395,13 +432,15 @@ app.patch(
       const result = await db.query(sql, values);
 
       if (result.rowCount === 0) {
-        return res.status(404).json({ message: "Movie not found." });
+        res.status(404).json({ message: "Movie not found." });
+        return;
       }
 
       res.status(200).json({ message: "Movie updated successfully." });
     } catch (error) {
-      if (error.code === "23505") {
-        return res.status(409).json({ message: "A conflict occurred." });
+      if ((error as { code?: string }).code === "23505") {
+        res.status(409).json({ message: "A conflict occurred." });
+        return;
       }
 
       console.error("Failed to update movie:", error);
@@ -418,10 +457,11 @@ app.delete(
       .isInt({ min: 1, max: MAX_INT4 })
       .withMessage("There's some problem deleting this movie."),
   ],
-  async (req, res) => {
+  async (req: Request, res: Response): Promise<void> => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ message: errors.array()[0].msg });
+      res.status(400).json({ message: errors.array()[0].msg });
+      return;
     }
 
     try {
@@ -431,7 +471,8 @@ app.delete(
       );
 
       if (result.rowCount === 0) {
-        return res.status(404).json({ message: "Movie not found." });
+        res.status(404).json({ message: "Movie not found." });
+        return;
       }
 
       res.status(200).json({ message: "Movie deleted successfully" });
@@ -457,10 +498,11 @@ app.post(
       .isLength({ min: 6 })
       .withMessage("Password must be at least 6 characters long."),
   ],
-  async (req, res) => {
+  async (req: Request, res: Response): Promise<void> => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ message: errors.array()[0].msg });
+      res.status(400).json({ message: errors.array()[0].msg });
+      return;
     }
 
     const { name, email, password } = req.body;
@@ -472,9 +514,10 @@ app.post(
       );
 
       if (existingUser.rows.length > 0) {
-        return res.status(409).json({
+        res.status(409).json({
           message: "A user with this email already exists. So just Login ;)",
         });
+        return;
       }
 
       const hash = await bcrypt.hash(password, saltRounds);
@@ -491,10 +534,11 @@ app.post(
       res.status(201).json({ message: "User registered successfully." });
     } catch (error) {
       // Two simultaneous registrations with the same email
-      if (error.code === "23505") {
-        return res.status(409).json({
+      if ((error as { code?: string }).code === "23505") {
+        res.status(409).json({
           message: "A user with this email already exists. So just Login ;)",
         });
+        return;
       }
 
       console.error(error);
@@ -517,10 +561,11 @@ app.post(
       .isLength({ min: 6 })
       .withMessage("Invalid password."),
   ],
-  async (req, res) => {
+  async (req: Request, res: Response): Promise<void> => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ message: errors.array()[0].msg });
+      res.status(400).json({ message: errors.array()[0].msg });
+      return;
     }
 
     const { email, password } = req.body;
@@ -539,7 +584,8 @@ app.post(
         (await bcrypt.compare(password, user.password));
 
       if (!isValid) {
-        return res.status(401).json({ message: "Invalid email or password." });
+        res.status(401).json({ message: "Invalid email or password." });
+        return;
       }
 
       await startSession(req, user.userid);
@@ -554,18 +600,24 @@ app.post(
 
 /* ---------- Error handler: must stay AFTER all routes ---------- */
 
-// eslint-disable-next-line no-unused-vars
-app.use((err, req, res, next) => {
-  if (res.headersSent) return next(err);
+app.use(
+  (
+    err: Error & { status?: number; statusCode?: number },
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) => {
+    if (res.headersSent) return next(err);
 
-  const status = err.status || err.statusCode || 500;
+    const status = err.status || err.statusCode || 500;
 
-  if (status >= 500) console.error(err);
+    if (status >= 500) console.error(err);
 
-  res.status(status).json({
-    message: status >= 500 ? "Something went wrong." : "Invalid request.",
-  });
-});
+    res.status(status).json({
+      message: status >= 500 ? "Something went wrong." : "Invalid request.",
+    });
+  },
+);
 
 if (process.env.NODE_ENV !== "test") {
   app.listen(port, "0.0.0.0", () => {

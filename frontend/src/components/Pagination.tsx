@@ -1,12 +1,18 @@
 import "./Pagination.css";
 
-function Pagination({ currentPage, totalPages, onPageChange }) {
+interface PaginationProps {
+  currentPage: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+}
+
+function Pagination({ currentPage, totalPages, onPageChange }: PaginationProps) {
   if (totalPages <= 1) {
     return null;
   }
 
   const getPageNumbers = () => {
-    const pages = [];
+    const pages: (number | "...")[] = [];
 
     if (totalPages <= 7) {
       for (let page = 1; page <= totalPages; page++) {

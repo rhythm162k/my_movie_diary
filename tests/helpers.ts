@@ -4,8 +4,21 @@ import { testDb } from "./testDb.js";
 
 export const TEST_PASSWORD = "some-test-password";
 
+export interface TestUser {
+  agent: ReturnType<typeof request.agent>;
+  userId: number;
+  email: string;
+}
+
+export interface MovieFields {
+  title: string;
+  rating: number;
+  description: string;
+  imgsrc: string;
+}
+
 // Removes users AND their movies (movies first, so foreign keys don't complain)
-export async function deleteUsersByEmail(...emails) {
+export async function deleteUsersByEmail(...emails: string[]) {
   await testDb.query(
     `DELETE FROM movies
      WHERE userid IN (SELECT userid FROM users WHERE email = ANY($1))`,
@@ -15,7 +28,10 @@ export async function deleteUsersByEmail(...emails) {
 }
 
 // Registers a fresh user and returns a logged-in agent plus their id
-export async function createLoggedInUser(email, name = "Tester") {
+export async function createLoggedInUser(
+  email: string,
+  name = "Tester",
+): Promise<TestUser> {
   await deleteUsersByEmail(email); // clear leftovers from a crashed run
 
   const agent = request.agent(app);
@@ -32,8 +48,11 @@ export async function createLoggedInUser(email, name = "Tester") {
 }
 
 // Inserts a movie straight into the DB (skips the API and OMDb)
-export async function insertMovie(userId, overrides = {}) {
-  const movie = {
+export async function insertMovie(
+  userId: number,
+  overrides: Partial<MovieFields> = {},
+): Promise<number> {
+  const movie: MovieFields = {
     title: "Test Movie",
     rating: 7,
     description: "Test description",
@@ -49,7 +68,7 @@ export async function insertMovie(userId, overrides = {}) {
   return rows[0].id;
 }
 
-export async function getMovie(id) {
+export async function getMovie(id: number) {
   const { rows } = await testDb.query("SELECT * FROM movies WHERE id = $1", [
     id,
   ]);
@@ -57,7 +76,7 @@ export async function getMovie(id) {
 }
 
 // A user who signed up with Google: no password
-export async function insertGoogleOnlyUser(email) {
+export async function insertGoogleOnlyUser(email: string) {
   await deleteUsersByEmail(email);
   await testDb.query(
     `INSERT INTO users (name, email, password, googleid)

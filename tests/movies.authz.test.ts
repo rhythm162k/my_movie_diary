@@ -7,13 +7,18 @@ import {
   deleteUsersByEmail,
   insertMovie,
   getMovie,
+  type TestUser,
+  type MovieFields,
 } from "./helpers.js";
 
 // Emails in this file are prefixed "authz-" so they never collide with other files.
 // Rule used here: user A owns the movie, user B is the intruder.
 
 // Gives user A exactly one fresh movie, so every test starts from the same state
-async function resetMovieFor(user, overrides = {}) {
+async function resetMovieFor(
+  user: TestUser,
+  overrides: Partial<MovieFields> = {},
+) {
   await testDb.query("DELETE FROM movies WHERE userid = $1", [user.userId]);
   return insertMovie(user.userId, overrides);
 }
@@ -21,7 +26,7 @@ async function resetMovieFor(user, overrides = {}) {
 describe("DELETE /api/delete", () => {
   const emailA = "authz-delete-a@example.test";
   const emailB = "authz-delete-b@example.test";
-  let userA, userB, movieId;
+  let userA: TestUser, userB: TestUser, movieId: number;
 
   beforeAll(async () => {
     userA = await createLoggedInUser(emailA);
@@ -68,7 +73,7 @@ describe("DELETE /api/delete", () => {
 describe("PATCH /api/movies/edit", () => {
   const emailA = "authz-patch-a@example.test";
   const emailB = "authz-patch-b@example.test";
-  let userA, userB, movieId;
+  let userA: TestUser, userB: TestUser, movieId: number;
 
   beforeAll(async () => {
     userA = await createLoggedInUser(emailA);
@@ -133,7 +138,7 @@ describe("PATCH /api/movies/edit", () => {
 describe("GET /api/movies isolation", () => {
   const emailA = "authz-list-a@example.test";
   const emailB = "authz-list-b@example.test";
-  let userA;
+  let userA: TestUser;
 
   beforeAll(async () => {
     userA = await createLoggedInUser(emailA);
@@ -155,7 +160,7 @@ describe("GET /api/movies isolation", () => {
 
 describe("DELETE /api/delete extra cases", () => {
   const email = "authz2-delete@example.test";
-  let user;
+  let user: TestUser;
 
   beforeAll(async () => {
     user = await createLoggedInUser(email);
@@ -202,7 +207,7 @@ describe("DELETE /api/delete extra cases", () => {
 // so we can prove a logged-out request really changes nothing.
 describe("logged-out PATCH and DELETE on a real movie", () => {
   const email = "authz2-loggedout@example.test";
-  let movieId;
+  let movieId: number;
 
   beforeAll(async () => {
     const owner = await createLoggedInUser(email);
